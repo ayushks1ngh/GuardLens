@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from guardlens import __version__
 from guardlens.config import ROOT, load_config
+from guardlens.capture.manager import manager
 from guardlens.events import init_engine
 
 logging.basicConfig(
@@ -38,10 +39,14 @@ async def lifespan(app: FastAPI):
     init_engine(cfg.resolved_db_url())
     logger.info("Database ready at %s", cfg.resolved_db_url())
 
-    # Camera workers etc. are started in later phases.
+    # Start capture workers for enabled cameras.
+    manager.start_all()
+    logger.info("Camera workers started: %s", manager.status())
+
     yield
 
     logger.info("GuardLens shutting down...")
+    manager.stop_all()
 
 
 def create_app() -> FastAPI:
@@ -50,6 +55,13 @@ def create_app() -> FastAPI:
     # Serve evidence snapshots.
     snapshots = Path(load_config().snapshots_dir())
     app.mount("/history", StaticFiles(directory=str(snapshots)), name="history")
+
+    # Routers
+    from guardlens.api.cameras import router as cameras_router
+    from guardlens.api.stream import router as stream_router
+
+    app.include_router(cameras_router)
+    app.include_router(stream_router)
 
     @app.get("/health")
     async def health():
@@ -60,7 +72,7 @@ def create_app() -> FastAPI:
             "python": platform.python_version(),
             "device": getattr(cfg, "device", "unknown"),
             "analyze_fps": getattr(cfg, "analyze_fps", None),
-            "cameras": [],  # populated in Phase 1
+            "cameras": manager.status(),
         }
 
     @app.get("/api/config")

@@ -30,7 +30,7 @@ def test_health_ok():
         assert body["status"] == "ok"
         assert "python" in body
         assert "device" in body
-        assert body["cameras"] == []
+        assert isinstance(body["cameras"], list)
 
 
 def test_config_endpoint():
