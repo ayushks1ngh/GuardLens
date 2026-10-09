@@ -1,0 +1,27 @@
+# GuardLens 2.0 configuration (see docs/06-tech-decisions.md ADR-009).
+# Everything here is overridable via GUARDLENS_<KEY> environment variables.
+
+host: 0.0.0.0
+port: 8080
+
+# Storage (db_url derived from data_dir if left empty)
+data_dir: data
+db_url: ""
+
+# Analysis
+analyze_fps: 6.0
+model_weights: yolov8n.pt
+device: cpu
+
+# Enabled detector plugins (resolved against the detector registry)
+detectors:
+  - key: object
+
+# Notifier plugins (configured at runtime via the API as well)
+notifiers: []
+
+# Activity log + daily report
+reporting:
+  activity_interval_seconds: 10.0
+  retention_days: 30
+  generator: structured

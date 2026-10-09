@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Data / runtime (keep sample video, ignore generated artifacts)
+data/snapshots/
+data/faces/
+data/*.db
+data/*.sqlite3
+*.log
+
+# Models
+*.pt
+*.onnx
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

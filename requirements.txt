@@ -1,0 +1,21 @@
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pyyaml==6.0.2
+python-multipart==0.0.20
+
+# --- Database ---
+sqlmodel==0.0.22
+
+# --- Computer vision (added/used from Phase 1 onward) ---
+numpy==2.1.3
+opencv-python-headless==4.10.0.84
+
+# --- Detection model (Phase 2) ---
+# NOTE: Ultralytics is AGPL-3.0 — see docs/06-tech-decisions.md ADR-002.
+ultralytics==8.3.58
+
+# --- Testing ---
+pytest==8.3.4
+httpx==0.28.1
