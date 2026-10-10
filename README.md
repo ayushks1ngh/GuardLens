@@ -11,8 +11,29 @@ operator dashboard.
 
 ## Status
 
-🚧 **Pre-build.** This repository currently contains planning documentation only.
-Implementation begins after the docs below are reviewed and approved.
+✅ **Roadmap phases 0–8 implemented and acceptance-tested.** GuardLens now includes
+camera capture/streaming, YOLO object detection, tracking, configurable security rules,
+event evidence/workflow, face enrollment/policies, notifications, analytics, activity
+sampling, and daily reports. See [`docs/08-build-log.md`](docs/08-build-log.md) for gate
+evidence and [`docs/09-session-recovery.md`](docs/09-session-recovery.md) for the latest
+handoff.
+
+## Run
+
+Local (creates/uses `.venv`):
+```bash
+./run.sh
+```
+Then open <http://localhost:8080>. The default config uses CPU inference and the bundled
+sample can be added as `data/samples/mall_cctv.mp4`. YOLO weights download once on first
+analysis startup.
+
+Docker:
+```bash
+docker compose up --build
+```
+Runtime state lives under `data/`; the Compose model volume keeps downloaded weights
+across restarts. Ultralytics is AGPL-3.0—review ADR-002 before commercial/network use.
 
 ## Documentation
 
@@ -28,6 +49,8 @@ Read these in order:
 | [`docs/05-roadmap.md`](docs/05-roadmap.md) | Phased delivery plan with acceptance gates |
 | [`docs/06-tech-decisions.md`](docs/06-tech-decisions.md) | ADRs: model choices, licensing, tradeoffs |
 | [`docs/07-extensibility.md`](docs/07-extensibility.md) | How to add new detectors, rules, and notifiers without rewrites |
+| [`docs/08-build-log.md`](docs/08-build-log.md) | Running record of each phase: what was built, gate results, fixes |
+| [`docs/09-session-recovery.md`](docs/09-session-recovery.md) | **Start here when resuming** — current status and how to pick up where we left off |
 
 ## Quick principles
 

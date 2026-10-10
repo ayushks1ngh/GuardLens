@@ -163,7 +163,9 @@ never crash the pipeline.
 
 - **Detection model / license (ADR-002):** swap the detector plugin or point it at a
   different ONNX model via config — no core change. This is how we escape AGPL if needed.
-- **Face backend (ADR-003):** `insightface` or `face_recognition` chosen by config.
+- **Face backend (ADR-003):** the default OpenCV backend is dependency-free and
+  CPU-safe; a stronger InsightFace, `face_recognition`, or other backend can replace it
+  while preserving the same `Detection.attributes` contract.
 - **Tracker (ADR-004):** custom IoU tracker now; ByteTrack later behind the same seam.
 - **Database (ADR-006):** change the connection URL (SQLite → Postgres).
 - **Frontend (ADR-008):** API is the stable boundary; the dashboard can be rewritten

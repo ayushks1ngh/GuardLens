@@ -46,13 +46,16 @@ Tradeoffs:
 - **`insightface` (ONNX via onnxruntime):** pip-installable wheels, good CPU performance,
   strong accuracy. Slightly larger model download.
 
-**Decision:** Put face recognition behind the `FaceDetector` plugin interface and
-support both. **Default = `insightface`** for easier install and better CPU performance;
-`face_recognition` available as an alternate backend (honors the user's referenced repo).
-Final default confirmed during Phase 5 after a quick install smoke-test on this machine.
+**Decision:** Put face recognition behind the `FaceDetector` plugin interface. The
+implemented CPU-first default is an **OpenCV cascade + normalized embedding cache**,
+because it ships with the existing OpenCV dependency and needs no additional model
+or native build. `insightface` and `face_recognition` remain optional replacement
+backends behind the same detection attributes/contract.
 
-**Consequences:** We satisfy the user's reference while avoiding dlib build pain as the
-default. Backend is swappable via config.
+**Consequences:** The default installs and runs deterministically on this CPU-only host
+without dlib or another model download. The simple baseline is less accurate than modern
+face models, so production deployments should plug in InsightFace or another vetted
+backend; callers, policies, APIs, and enrollment storage do not change.
 
 ---
 

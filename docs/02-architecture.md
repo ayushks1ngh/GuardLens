@@ -130,7 +130,7 @@ the core**. We achieve this with three plugin registries — **Detectors**,
 | CV | OpenCV | capture + drawing |
 | Detection | Ultralytics YOLO (default) / pluggable | **AGPL** — fallback documented in ADRs |
 | Tracking | lightweight IoU/centroid tracker | pure Python/NumPy, CPU-cheap |
-| Face | `face_recognition` (dlib) or `insightface` | ADR picks default |
+| Face | OpenCV baseline / pluggable InsightFace or `face_recognition` | ADR-003 |
 | DB/ORM | SQLModel + SQLite | Postgres-compatible |
 | Frontend | HTML/CSS/JS single page | extends original dashboard |
 | Packaging | venv + script, and Docker Compose | one-command run |

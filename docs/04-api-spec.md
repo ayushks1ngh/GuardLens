@@ -32,7 +32,7 @@ expected to grow; additive changes only within a major version.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/stream/{camera_id}/mjpeg` | MJPEG stream for `<img src>` (the video) |
+| GET | `/stream/{camera_id}/mjpeg` | MJPEG stream for `<img src>` (the video); optional `?max_frames=1..10` bounds diagnostics/tests |
 | GET | `/api/stream/{camera_id}/overlay` (SSE) | Lightweight per-frame metadata: alert flag, counts, track boxes |
 | GET | `/api/events/stream` (SSE) | Global live feed of new events |
 | GET | `/ws/overlay` (WS, fallback) | Same metadata over WebSocket if SSE unavailable |
@@ -119,9 +119,9 @@ Example create (loitering):
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/api/activity` | Raw activity-log entries `?camera_id=&from=&to=&limit=&offset=` |
-| GET | `/api/reports/daily?date=YYYY-MM-DD` | Get the daily report (generates + caches if missing) |
-| POST | `/api/reports/daily/regenerate?date=YYYY-MM-DD` | Force regeneration (e.g., after choosing a different generator) |
-| GET | `/api/reports/daily/{date}/download?format=md|txt` | Download the rendered briefing |
+| GET | `/api/reports/daily?date=YYYY-MM-DD|today` | Get the daily report (generates + caches if missing) |
+| POST | `/api/reports/daily/regenerate?date=YYYY-MM-DD|today` | Force regeneration (e.g., after choosing a different generator) |
+| GET | `/api/reports/daily/download?date=...` or `/api/reports/daily/{date}/download` | Download the rendered text briefing |
 
 Daily report payload (shape):
 ```json
