@@ -81,7 +81,7 @@ def test_camera_crud_and_stream():
         assert connected, "camera worker did not connect"
 
         # MJPEG streams multipart bytes (bounded: read a couple of chunks then stop)
-        with client.stream("GET", f"/stream/{cid}/mjpeg") as resp:
+        with client.stream("GET", f"/stream/{cid}/mjpeg?max_frames=2") as resp:
             assert resp.status_code == 200
             assert "multipart/x-mixed-replace" in resp.headers["content-type"]
             got = b""
