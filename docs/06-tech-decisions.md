@@ -163,13 +163,66 @@ requirement.
 
 ---
 
-## Open questions (to confirm during build)
+## Open questions / follow-up decisions
 
-- **OQ-1:** Final face backend default (insightface vs face_recognition) — decided after
-  Phase 5 install smoke-test on this CPU-only machine.
-- **OQ-2:** Short **clip** recording (not just snapshots) — snapshots in Phase 3,
-  optional clips as a later enhancement.
-- **OQ-3:** Whether to adopt ByteTrack over the custom tracker if accuracy is insufficient.
-- **OQ-4:** Activity-log sampling interval (e.g. every 5–10s/camera) and retention window.
-- **OQ-5:** Optional VLM enricher via a local small model vs a cloud API — revisit after
-  the structured report works.
+- **Resolved:** Face default is the OpenCV CPU baseline; stronger backends remain plugins.
+- **Planned:** Clip recording is specified in ADR-013 / `docs/10-improvement-plan.md`.
+- **Open:** Upgrade to ByteTrack only if real-camera testing shows the custom tracker is insufficient.
+- **Open:** Tune activity sampling/retention from observed storage and report usefulness.
+- **Open:** Optional VLM enrichment remains deferred until structured reports are evaluated.
+- **Approval required:** LAN-only vs internet device publishing; IP-camera-first vs
+  browser-WebRTC-first; recording defaults/retention; target sign language and scope;
+  whether the NARUTO model is reference-only or an optional demo plugin.
+
+---
+
+## Proposed ADR-012 — Camera source adapters and browser publishers
+
+**Status:** Proposed; approval required before implementation.
+
+**Context:** OpenCV pull sources cover local indexes, files, RTSP, and many HTTP/MJPEG
+URLs, but a phone/laptop browser publishes frames rather than exposing a pull URL.
+
+**Proposal:** Add a `CameraSource` registry with `OpenCvSource` and `WebRtcSource`.
+Provide short-lived authenticated pairing links/QR codes and a browser publisher page.
+Use HTTPS (required for browser camera access away from localhost), LAN scope first, and
+keep the analysis pipeline consuming the same latest BGR frame contract.
+
+**Consequences:** One Add Camera experience can support local, IP, phone, and laptop
+sources without forcing WebRTC semantics into `cv2.VideoCapture`. It adds migrations,
+signaling, authentication, and optional TURN complexity.
+
+---
+
+## Proposed ADR-013 — Recording as a separate clip service
+
+**Status:** Proposed.
+
+**Context:** Motion-triggered recording needs pre-roll, post-roll, writer lifecycle,
+retention, disk quotas, and codec failure handling. These concerns do not belong inside
+a detector or rule.
+
+**Proposal:** Introduce a `ClipRecorder` consuming camera frames and trigger state.
+Support off/motion/event/continuous modes, bounded segmented clips, pre/post-roll, and
+references through `event.clip_path`. Implement motion as an OpenCV MOG2 detector/rule.
+
+**Consequences:** Recording triggers and codecs stay replaceable; all detectors can
+request evidence without owning files. Ring buffers add bounded per-camera memory use.
+
+---
+
+## Proposed ADR-014 — Hand gestures as vocabulary-scoped detector plugins
+
+**Status:** Proposed; target sign language and scope are unresolved.
+
+**Context:** MediaPipe landmark classifiers, NARUTO hand-sign object detection, and real
+sign-language translation are different tasks.
+
+**Proposal:** First add a `HandGestureDetector` contract carrying landmarks,
+handedness, vocabulary, labels, and confidence. Keep `basic_gestures`, optional
+`naruto_14`, and any real language model as separate backends. Do not describe static
+pose recognition as full sign-language translation.
+
+**Consequences:** We can validate low-cost gesture infrastructure before selecting and
+training a real ASL/ISL vocabulary. Dynamic/two-hand/continuous signing remains a
+separate temporal-model project with its own dataset and measured acceptance gate.

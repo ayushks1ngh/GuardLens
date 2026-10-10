@@ -13,17 +13,15 @@ memory of the previous conversation. Read this first; it tells you *where we are
 
 | Field | Value |
 |-------|-------|
-| **Last completed phase** | **Phase 8** — Hardening & polish ✅ |
-| **Next phase** | Post-roadmap: deploy/demo on your real camera and collect feedback |
-| **Working tree** | Phases 2–8 complete and validated; changes are not committed yet |
-| **Tests** | 47/47 passing (unit, API, real YOLO, workflow, reporting, hardening) |
+| **Last completed phase** | GuardLens 2.0 Phase 8 ✅; post-2.0 research recorded |
+| **Next phase** | **Improvement Phase A** — source abstraction and duplicate-camera cleanup (pending approval) |
+| **Working tree** | Planning/docs changes only; no feature implementation started |
+| **Tests** | 47/47 last verified before this docs-only planning session |
 | **Last updated** | 2026-10-10 |
 
-**One-line resume:** run `./run.sh`, open <http://localhost:8080>, add the bundled
-sample or a real camera, and perform an operator demo. The roadmap is complete; next
-work should be driven by real-camera accuracy/performance feedback. Before modifying
-anything, run the time-boxed validation commands below and read the newest entries in
-`docs/08-build-log.md`.
+**One-line resume:** read `docs/10-improvement-plan.md`, confirm the six decisions in
+its Section 5, then begin only **Improvement Phase A**. Do not implement recording or
+hand/sign recognition before the camera-source abstraction and its Gate A pass.
 
 ---
 
@@ -68,6 +66,9 @@ These are the external repos the build draws from. Full rationale in
 | [ultralytics/yolov5](https://github.com/ultralytics/yolov5) | Same YOLO family; interchangeable detector backend | 2 | ADR-002 |
 | [ageitgey/face_recognition](https://github.com/ageitgey/face_recognition) | Optional replacement `FaceDetector` backend (MIT); OpenCV baseline is default | 5 | ADR-003 |
 | [HackerShackOfficial/Smart-Security-Camera](https://github.com/HackerShackOfficial/Smart-Security-Camera) | Conceptual reference for monitoring/alerts (superseded by ADR-005 MJPEG+SSE) | — | `00-overview.md` |
+| [dognehari12-commits/-CCTV-Style-Motion-Detection-using-OpenCV](https://github.com/dognehari12-commits/-CCTV-Style-Motion-Detection-using-OpenCV) | MOG2 motion filtering + motion clip lifecycle; README says MIT but license file was not found | Proposed C | ADR-013 / plan §2 |
+| [kinivi/hand-gesture-recognition-mediapipe](https://github.com/kinivi/hand-gesture-recognition-mediapipe) | Apache-2.0 MediaPipe landmarks, static and temporal gesture classifiers | Proposed D/E | ADR-014 / plan §2 |
+| [Kazuhito00/NARUTO-HandSignDetection](https://github.com/Kazuhito00/NARUTO-HandSignDetection) | MIT ONNX/YOLOX sign detector and sequence smoothing; not real sign language | Optional D/E | ADR-014 / plan §2 |
 
 ---
 
@@ -83,6 +84,17 @@ These are the external repos the build draws from. Full rationale in
 - [x] **Phase 7** — activity log & daily report
 - [x] **Phase 8** — hardening & polish
 
+
+### Proposed post-2.0 phases (not started)
+
+- [ ] **A** — camera-source registry, DB migration, source wizard, duplicate-camera cleanup
+- [ ] **B** — secure browser/WebRTC phone and laptop publishers
+- [ ] **C** — MOG2 motion and pre/post-roll clip recording
+- [ ] **D** — MediaPipe hand/gesture plugin foundation
+- [ ] **E** — explicitly chosen sign-language vocabulary/model and evaluation
+- [ ] **F** — multi-device soak, security, migration, and release hardening
+
+Approval decisions are in `docs/10-improvement-plan.md` §5.
 ---
 
 ## 5. Flexibility invariant (never violate — checked every phase)

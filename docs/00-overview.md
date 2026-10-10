@@ -100,3 +100,14 @@ later add richer natural-language descriptions (see ADR-010) without changing th
 - [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) and
   [ultralytics/yolov5](https://github.com/ultralytics/yolov5) — detection models.
   **License caution: AGPL-3.0** — see [`06-tech-decisions.md`](06-tech-decisions.md).
+
+- [dognehari12-commits/-CCTV-Style-Motion-Detection-using-OpenCV](https://github.com/dognehari12-commits/-CCTV-Style-Motion-Detection-using-OpenCV)
+  — reference for MOG2 motion filtering and motion-triggered clip lifecycle. README
+  claims MIT, but no root license file was found during review; do not copy source until
+  licensing is verified.
+- [kinivi/hand-gesture-recognition-mediapipe](https://github.com/kinivi/hand-gesture-recognition-mediapipe)
+  — Apache-2.0 reference for MediaPipe landmarks, normalized keypoints, static TFLite
+  classification, and temporal point-history gestures.
+- [Kazuhito00/NARUTO-HandSignDetection](https://github.com/Kazuhito00/NARUTO-HandSignDetection)
+  — MIT reference for an ONNX/YOLOX hand-sign detector and sequence/chattering logic.
+  Its 14 NARUTO signs are fictional and are not a sign-language vocabulary.

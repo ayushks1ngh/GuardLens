@@ -227,3 +227,38 @@ InsightFace/`face_recognition` remain replaceable higher-accuracy backends (ADR-
   Starlette together.
 
 ---
+
+## Post-2.0 research — multi-device cameras, recording & hand/sign input 📋
+
+**Status:** Planning only; no implementation started.
+
+**Requested direction**
+- Add local webcams, phones, laptops, IP/RTSP/HTTP cameras, and files through one
+  guided camera workflow, with all existing detection/rules/events/reports applied.
+- Add motion/event/continuous recording and hand/sign recognition.
+- Keep docs/recovery/reference licensing current throughout implementation.
+
+**Research findings**
+- `-CCTV-Style-Motion-Detection-using-OpenCV`: useful MOG2/morphology/contour and
+  no-motion-buffer clip pattern; it does not provide multi-device networking. README
+  says MIT but no root license file was found, so source copying is not approved.
+- `hand-gesture-recognition-mediapipe`: Apache-2.0; strong template for MediaPipe hand
+  landmarks, normalized keypoints, TFLite static gestures, and 16-frame motion history.
+  Included vocabulary is basic gestures, not complete sign language.
+- `NARUTO-HandSignDetection`: MIT; YOLOX-Nano ONNX detects 14 fictional hand signs and
+  demonstrates sequence reset/chattering suppression. It is not sign language.
+- Browser phone/laptop publishing should use permissioned `getUserMedia` + WebRTC;
+  non-local browser camera access requires HTTPS. RTSP/MJPEG remains a pull adapter.
+
+**Proposed plan**
+- Added `docs/10-improvement-plan.md` with Phases A–F and measurable gates.
+- Added proposed ADR-012 (source adapters/WebRTC), ADR-013 (clip recorder), and ADR-014
+  (vocabulary-scoped gesture plugins).
+- Implementation waits for decisions on LAN/internet scope, camera onboarding order,
+  recording modes/retention, target sign language/scope, and optional NARUTO demo.
+
+**Session hygiene**
+- Updated README docs index, overview references, ADR/open questions, and recovery.
+- Stopped the temporary high-CPU manual demo before planning.
+
+---
