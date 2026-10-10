@@ -262,3 +262,34 @@ InsightFace/`face_recognition` remain replaceable higher-accuracy backends (ADR-
 - Stopped the temporary high-CPU manual demo before planning.
 
 ---
+
+## Improvement Phase A — source abstraction (implementation checkpoint) ✅/🧪
+
+**Built**
+- Auto-discovered `CameraSource` registry with stable open/read/close/status contract.
+- Backward-compatible `OpenCvSource` modes: host device, file, RTSP/HTTP/MJPEG network.
+- Additive SQLite migration adds `camera.source_type` and JSON `source_config` without
+  deleting or rewriting old camera rows; source-type index included.
+- Legacy `{name, source}` API remains valid; typed source API is validated before save.
+- Source-type schema, Linux local-device discovery, and one-frame non-persisting probe APIs.
+- Probe-first Add Camera wizard for host, network/phone-camera-app, and file sources;
+  browser/WebRTC pairing is explicitly deferred to Phase B.
+- Camera status includes adapter type, resolution, frame freshness, and source error.
+- Network credentials and query tokens are redacted from API responses.
+- `scripts/check_source.py` now uses the same adapter registry as runtime capture.
+
+**Automated validation — PASSED**
+- `tests/test_improvement_a.py`: 7 tests for registry extensibility, source modes,
+  typed/legacy CRUD, one-frame probe, detailed status, migration, redaction, and wizard.
+- Full suite: **54/54 passed**; Python/frontend syntax, `pip check`, Compose config pass.
+- Real local HTTP/MJPEG integration: network adapter read a 1920×1080 frame.
+- Sample file adapter/CLI: 1920×1080 @ 30 FPS.
+
+**Gate A still awaiting user/hardware input**
+- This Linux environment exposes no `/dev/video*`, so a physical host webcam could not
+  be tested here.
+- A real phone IP-camera app URL and real RTSP camera should be tested when available.
+- Existing real DB still has 17 duplicate enabled sample cameras; no rows were changed.
+  User must approve archive/fresh DB vs disable-all vs keep-one cleanup.
+
+---

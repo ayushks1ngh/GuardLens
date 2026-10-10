@@ -13,15 +13,16 @@ memory of the previous conversation. Read this first; it tells you *where we are
 
 | Field | Value |
 |-------|-------|
-| **Last completed phase** | GuardLens 2.0 Phase 8 ✅; post-2.0 research recorded |
-| **Next phase** | **Improvement Phase A** — source abstraction and duplicate-camera cleanup (pending approval) |
-| **Working tree** | Planning/docs changes only; no feature implementation started |
-| **Tests** | 47/47 last verified before this docs-only planning session |
+| **Last completed phase** | Improvement Phase A implementation ✅; hardware/cleanup gate pending |
+| **Next phase** | User-check source wizard + physical/phone URL; approve duplicate DB cleanup |
+| **Working tree** | Phase A implemented on `main`; hardware/cleanup gate pending |
+| **Tests** | 54/54 passing (47 baseline + 7 Phase A) |
 | **Last updated** | 2026-10-10 |
 
-**One-line resume:** read `docs/10-improvement-plan.md`, confirm the six decisions in
-its Section 5, then begin only **Improvement Phase A**. Do not implement recording or
-hand/sign recognition before the camera-source abstraction and its Gate A pass.
+**One-line resume:** run the isolated Phase A UI, verify the source wizard with the
+sample plus any available webcam/IP-phone URL, then decide how to clean the old DB's 17
+duplicate sample cameras. Do not begin Phase B until Gate A's physical check and cleanup
+choice are recorded in `docs/10-improvement-plan.md`.
 
 ---
 
@@ -43,7 +44,7 @@ hand/sign recognition before the camera-source abstraction and its Gate A pass.
 cd /home/ayush/GuardLens
 git log --oneline -10
 git status
-timeout 420 .venv/bin/python -m pytest -q        # expect 47 passed
+timeout 480 .venv/bin/python -m pytest -q        # expect 54 passed
 timeout 30  .venv/bin/python -c "import cv2, torch; print(cv2.__version__, torch.__version__)"
 timeout 30  .venv/bin/pip check
 timeout 30  docker compose config
@@ -87,7 +88,7 @@ These are the external repos the build draws from. Full rationale in
 
 ### Proposed post-2.0 phases (not started)
 
-- [ ] **A** — camera-source registry, DB migration, source wizard, duplicate-camera cleanup
+- [~] **A** — source registry/migration/wizard built; physical webcam + DB cleanup pending
 - [ ] **B** — secure browser/WebRTC phone and laptop publishers
 - [ ] **C** — MOG2 motion and pre/post-roll clip recording
 - [ ] **D** — MediaPipe hand/gesture plugin foundation

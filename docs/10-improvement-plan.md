@@ -60,18 +60,18 @@ optional NARUTO/demo vocabulary, never labeled as accessibility translation.
 
 ### 3.1 Camera source adapters
 
-The current `CaptureWorker` assumes every source can be pulled through
-`cv2.VideoCapture`. Keep that adapter, but add a `CameraSource` registry:
+The Phase A `CaptureWorker` consumes an auto-discovered `CameraSource` registry rather
+than opening transports directly:
 
 ```text
 CameraSource.open/read/close/status
-  ├─ OpenCvSource: local index, file, RTSP, HTTP/MJPEG
-  └─ WebRtcSource: frames pushed by a paired browser/phone/laptop
+  ├─ OpenCvSource: local index, file, RTSP, HTTP/MJPEG (implemented)
+  └─ WebRtcSource: frames pushed by a paired browser/phone/laptop (Phase B)
 ```
 
-A camera stores `source_type` and flexible JSON `source_config`. Add migration support
-before changing the camera table. The analysis pipeline continues consuming latest BGR
-frames and therefore remains unchanged.
+A camera stores backward-compatible `source`, registry key `source_type`, and flexible
+JSON `source_config`. An additive SQLite migration preserves existing rows. The
+analysis pipeline still consumes the same latest BGR frame and remains unchanged.
 
 ### 3.2 Guided Add Camera experience
 
@@ -145,14 +145,21 @@ models and representative data. Product wording must match actual capability.
 
 ## 4. Delivery order and acceptance gates
 
-### Improvement Phase A — Source abstraction and cleanup
+### Improvement Phase A — Source abstraction and cleanup (backend + wizard built; hardware check pending)
 
-- Archive/fix the old local DB containing 17 duplicate sample cameras.
-- Add migrations and `CameraSource` registry; keep OpenCV adapter behavior unchanged.
-- Add source metadata/status and deterministic adapter tests.
+- [x] Add safe additive camera migration (`source_type`, JSON `source_config`).
+- [x] Add auto-discovered `CameraSource` registry and OpenCV adapter.
+- [x] Keep legacy `{name, source}` requests and worker calls compatible.
+- [x] Add source schema/device/probe APIs and probe-first dashboard wizard.
+- [x] Add resolution, frame-age, source-type, and error status.
+- [x] Verify sample file and real local HTTP/MJPEG transport through the same adapter.
+- [ ] Verify a physical host webcam (no `/dev/video*` is exposed in this environment).
+- [ ] Archive/fix the old local DB containing 17 duplicate sample cameras (requires user approval).
 
-**Gate A:** local webcam, sample file, and RTSP/MJPEG test source all pass through the
-same adapter contract; existing 47 tests remain green.
+**Gate A:** automated adapter/migration/API/wizard tests pass and existing tests remain
+green. Final closure requires one physical host-webcam check and an approved duplicate-
+camera cleanup. RTSP uses the same FFmpeg-backed network adapter as verified HTTP/MJPEG,
+but a real RTSP device should also be checked when available.
 
 ### Improvement Phase B — Phone/laptop browser cameras
 

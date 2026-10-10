@@ -26,7 +26,9 @@ Report (per date; derived from ActivityLog + Event)
 |--------|------|-------|
 | id | int PK | |
 | name | str | human label |
-| source | str | `"0"`, RTSP URL, or file path |
+| source | str | backward-compatible display/open value (`"0"`, URL, or file path) |
+| source_type | str | adapter registry key; `opencv` in Phase A |
+| source_config | JSON | typed adapter config: mode plus device index, URL, path, timeouts, etc. |
 | enabled | bool | default true |
 | analyze_fps | float | per-camera override, nullable |
 | created_at | datetime | |

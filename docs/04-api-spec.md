@@ -22,10 +22,13 @@ expected to grow; additive changes only within a major version.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/cameras` | List cameras + live status (connected, fps) |
-| POST | `/api/cameras` | Add camera `{ name, source, analyze_fps? }` |
-| GET | `/api/cameras/{id}` | Get one camera |
-| PATCH | `/api/cameras/{id}` | Update `{ name?, source?, enabled?, analyze_fps? }` |
+| GET | `/api/cameras` | List cameras + adapter/status (connected, fps, resolution, freshness, error) |
+| GET | `/api/cameras/source-types` | Source adapter/mode schemas for the Add Camera wizard |
+| GET | `/api/cameras/local-devices` | Host `/dev/video*` devices when exposed |
+| POST | `/api/cameras/probe` | Validate/open/read one frame without persisting a camera |
+| POST | `/api/cameras` | Add legacy `{name,source}` or typed `{name,source_type,source_config,analyze_fps?}` |
+| GET | `/api/cameras/{id}` | Get one camera and detailed runtime source status |
+| PATCH | `/api/cameras/{id}` | Update metadata, source config, enabled state, or analyze FPS |
 | DELETE | `/api/cameras/{id}` | Remove camera (stops its worker) |
 
 ## Live video & events (streaming)

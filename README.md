@@ -18,6 +18,11 @@ sampling, and daily reports. See [`docs/08-build-log.md`](docs/08-build-log.md) 
 evidence and [`docs/09-session-recovery.md`](docs/09-session-recovery.md) for the latest
 handoff.
 
+🚧 **Post-2.0 Improvement Phase A is implemented and awaiting hardware checks.** The
+Add Camera flow now supports typed host-device, file, RTSP, HTTP, and MJPEG sources via
+an extensible source registry with probe-first validation. Browser/WebRTC phone pairing
+is the next phase after a physical webcam/IP-camera check and duplicate-DB cleanup choice.
+
 ## Run
 
 Local (creates/uses `.venv`):

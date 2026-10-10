@@ -49,7 +49,28 @@ or logic it uses internally.
 
 ---
 
-## 2. Detector plugins
+## 2. Camera source plugins
+
+```python
+from guardlens.capture.sources import CameraSource, register_source
+
+@register_source
+class WebRtcSource(CameraSource):
+    key = "webrtc"
+    modes = [{"key": "paired_browser", "fields": []}]
+    def open(self) -> bool: ...
+    def read(self): ...                 # -> (ok, BGR ndarray)
+    def close(self) -> None: ...
+```
+
+Source modules are auto-discovered. `GET /api/cameras/source-types` exposes adapter/mode
+schemas to the source wizard. Capture and analysis consume only the source contract, so
+adding WebRTC or another transport does not edit the core frame pipeline. Credentials
+remain in persisted `source_config` but are redacted from operator API responses.
+
+---
+
+## 3. Detector plugins
 
 ```python
 # guardlens/detectors/base.py
@@ -86,7 +107,7 @@ enabled detectors and merges their `Detection`s into the `FrameContext`.
 
 ---
 
-## 3. Rule plugins
+## 4. Rule plugins
 
 ```python
 # guardlens/rules/base.py
@@ -122,7 +143,7 @@ can render a config form **without hardcoding the rule in the UI**.
 
 ---
 
-## 4. Notifier plugins
+## 5. Notifier plugins
 
 ```python
 # guardlens/notifiers/base.py
@@ -147,7 +168,7 @@ never crash the pipeline.
 
 ---
 
-## 5. Other swap points
+## 6. Other swap points
 
 - **Report generator (ADR-010):** implement the `ReportGenerator` interface, register,
   and select via config. The default `structured` generator is deterministic/CPU-only;
@@ -173,7 +194,7 @@ never crash the pipeline.
 
 ---
 
-## 6. The rules we hold ourselves to (checked every phase)
+## 7. The rules we hold ourselves to (checked every phase)
 
 1. New detector/rule/notifier = **new file + config**, never a core edit.
 2. New rule parameters live in the **JSON `params`** column — **no DB migration**.

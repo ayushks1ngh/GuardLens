@@ -178,7 +178,7 @@ requirement.
 
 ## Proposed ADR-012 — Camera source adapters and browser publishers
 
-**Status:** Proposed; approval required before implementation.
+**Status:** Accepted. Phase A `OpenCvSource` and registry implemented; Phase B WebRTC adapter pending.
 
 **Context:** OpenCV pull sources cover local indexes, files, RTSP, and many HTTP/MJPEG
 URLs, but a phone/laptop browser publishes frames rather than exposing a pull URL.

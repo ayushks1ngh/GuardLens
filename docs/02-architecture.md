@@ -34,11 +34,14 @@ the core**. We achieve this with three plugin registries — **Detectors**,
 
 ## 2. Components
 
-### 2.1 Capture worker (`guardlens/capture/`)
-- One worker per camera, running in its own thread.
-- Reads frames via OpenCV; keeps only the **latest** frame (drops stale frames to avoid lag).
-- Handles reconnect with backoff.
-- Publishes the latest raw frame to the **stream broker** and to the **analysis pipeline**.
+### 2.1 Capture sources + worker (`guardlens/capture/`)
+- Auto-discovered `CameraSource` adapters implement `open/read/close/status`.
+- Phase A `OpenCvSource` supports host device indexes, files, RTSP, HTTP, and MJPEG;
+  Phase B adds a browser/WebRTC publisher adapter without changing analysis.
+- One capture worker per camera, running in its own thread and consuming its adapter.
+- Keeps only the **latest** frame (drops stale frames to avoid lag).
+- Handles reconnect with backoff and reports adapter type, resolution, frame age/errors.
+- Publishes the latest raw frame to the **stream broker** and **analysis pipeline**.
 
 ### 2.2 Analysis pipeline (`guardlens/analysis/`)
 - Pulls the latest frame at the configured **analyze-FPS** (independent of capture FPS).
