@@ -1,0 +1,16 @@
+services:
+  guardlens:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - guardlens-models:/app/models
+    environment:
+      GUARDLENS_DATA_DIR: /app/data
+      GUARDLENS_MODEL_WEIGHTS: /app/models/yolov8n.pt
+      GUARDLENS_DEVICE: cpu
+    restart: unless-stopped
+
+volumes:
+  guardlens-models:

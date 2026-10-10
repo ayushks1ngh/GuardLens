@@ -1,0 +1,11 @@
+.git
+.kiro
+.venv
+__pycache__
+.pytest_cache
+data/*.db
+data/snapshots
+data/faces
+*.pt
+*.onnx
+*.log
