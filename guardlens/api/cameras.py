@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from guardlens.capture.manager import manager
@@ -14,16 +14,16 @@ router = APIRouter(prefix="/api/cameras", tags=["cameras"])
 
 
 class CameraCreate(BaseModel):
-    name: str
-    source: str
-    analyze_fps: Optional[float] = None
+    name: str = Field(min_length=1, max_length=120)
+    source: str = Field(min_length=1, max_length=2048)
+    analyze_fps: Optional[float] = Field(default=None, gt=0, le=60)
 
 
 class CameraUpdate(BaseModel):
-    name: Optional[str] = None
-    source: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    source: Optional[str] = Field(default=None, min_length=1, max_length=2048)
     enabled: Optional[bool] = None
-    analyze_fps: Optional[float] = None
+    analyze_fps: Optional[float] = Field(default=None, gt=0, le=60)
 
 
 def _status_for(camera_id: int) -> dict:
@@ -49,6 +49,12 @@ def create_camera(body: CameraCreate):
         session.refresh(cam)
     if cam.enabled:
         manager.start_camera(cam.id, cam.source)
+        try:
+            from guardlens.analysis.pipeline import analysis_manager
+            if analysis_manager.active:
+                analysis_manager.start_camera(cam.id)
+        except Exception:
+            pass
     return {**cam.model_dump(), "status": _status_for(cam.id)}
 
 
@@ -79,14 +85,32 @@ def update_camera(camera_id: int, body: CameraUpdate):
     # Reconcile worker with new state.
     if not enabled:
         manager.stop_camera(camera_id)
+        try:
+            from guardlens.analysis.pipeline import analysis_manager
+            analysis_manager.stop_camera(camera_id)
+        except Exception:
+            pass
     elif "source" in data or "enabled" in data:
         manager.start_camera(camera_id, source)
+        try:
+            from guardlens.analysis.pipeline import analysis_manager
+            if analysis_manager.active:
+                analysis_manager.start_camera(camera_id)
+        except Exception:
+            pass
     return {**cam.model_dump(), "status": _status_for(camera_id)}
 
 
 @router.delete("/{camera_id}")
 def delete_camera(camera_id: int):
+    try:
+        from guardlens.analysis.pipeline import analysis_manager
+        analysis_manager.stop_camera(camera_id)
+    except Exception:
+        pass
     manager.stop_camera(camera_id)
+    from guardlens.streaming.stream import overlay_store
+    overlay_store.remove(camera_id)
     with Session(get_engine()) as session:
         cam = session.get(Camera, camera_id)
         if not cam:

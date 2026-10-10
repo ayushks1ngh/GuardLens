@@ -10,9 +10,15 @@ sqlmodel==0.0.22
 
 # --- Computer vision (added/used from Phase 1 onward) ---
 numpy==2.1.3
-opencv-python-headless==4.10.0.84
+# Ultralytics declares opencv-python directly; use the exact non-contrib build
+# so dependency checks remain consistent. GUI APIs are not used by GuardLens.
+opencv-python==4.10.0.84
 
-# --- Detection model (Phase 2) ---
+# Detection model (Phase 2). Pin the CPU wheels explicitly so a clean install
+# cannot pull multi-gigabyte CUDA/NVIDIA packages onto a CPU-first machine.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
 # NOTE: Ultralytics is AGPL-3.0 — see docs/06-tech-decisions.md ADR-002.
 ultralytics==8.3.58
 

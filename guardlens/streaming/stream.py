@@ -35,6 +35,10 @@ class OverlayStore:
         with self._lock:
             return dict(self._data.get(camera_id, {}))
 
+    def remove(self, camera_id: int) -> None:
+        with self._lock:
+            self._data.pop(camera_id, None)
+
     def all(self) -> dict[int, dict]:
         with self._lock:
             return {k: dict(v) for k, v in self._data.items()}
@@ -52,12 +56,20 @@ def _encode_jpeg(frame) -> Optional[bytes]:
     return buf.tobytes()
 
 
-def mjpeg_generator(camera_id: int, target_fps: float = 15.0):
-    """Yield multipart MJPEG chunks for a camera's latest frames."""
+def mjpeg_generator(
+    camera_id: int, target_fps: float = 15.0, max_frames: Optional[int] = None
+):
+    """Yield multipart MJPEG chunks for a camera's latest frames.
+
+    Production streams are infinite by default. ``max_frames`` provides a
+    bounded diagnostic/test mode so clients can verify JPEG delivery without
+    relying on cancellation behavior for an endless HTTP response.
+    """
     boundary = b"--frame"
     interval = 1.0 / target_fps if target_fps > 0 else 0.0
     waited = 0.0
-    while True:
+    frames_sent = 0
+    while max_frames is None or frames_sent < max_frames:
         worker = manager.get_worker(camera_id)
         if worker is None:
             break
@@ -72,6 +84,7 @@ def mjpeg_generator(camera_id: int, target_fps: float = 15.0):
                     b"Content-Length: " + str(len(jpeg)).encode() + b"\r\n\r\n"
                     + jpeg + b"\r\n"
                 )
+                frames_sent += 1
         else:
             # No frame yet (camera connecting). Give up after a while so the
             # response can't block forever if the source never produces frames.
@@ -81,18 +94,21 @@ def mjpeg_generator(camera_id: int, target_fps: float = 15.0):
         time.sleep(interval if frame is not None else 0.1)
 
 
+def overlay_payload(camera_id: Optional[int] = None) -> dict:
+    if camera_id is not None:
+        payload = {str(camera_id): overlay_store.get(camera_id)}
+    else:
+        payload = {str(k): v for k, v in overlay_store.all().items()}
+    for status in manager.status():
+        key = str(status["camera_id"])
+        payload.setdefault(key, {})
+        payload[key]["connected"] = status["connected"]
+        payload[key]["fps"] = status["fps"]
+    return payload
+
+
 async def overlay_event_stream(camera_id: Optional[int] = None):
     """SSE generator for overlay metadata (all cameras or one)."""
     while True:
-        if camera_id is not None:
-            payload = {str(camera_id): overlay_store.get(camera_id)}
-        else:
-            payload = {str(k): v for k, v in overlay_store.all().items()}
-        # merge in live connection/fps from the manager
-        for s in manager.status():
-            key = str(s["camera_id"])
-            payload.setdefault(key, {})
-            payload[key]["connected"] = s["connected"]
-            payload[key]["fps"] = s["fps"]
-        yield f"data: {json.dumps(payload)}\n\n"
+        yield f"data: {json.dumps(overlay_payload(camera_id))}\n\n"
         await asyncio.sleep(0.5)

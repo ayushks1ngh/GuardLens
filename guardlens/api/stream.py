@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
 from guardlens.capture.manager import manager
@@ -13,9 +13,12 @@ router = APIRouter(tags=["stream"])
 
 
 @router.get("/stream/{camera_id}/mjpeg")
-def mjpeg(camera_id: int):
+def mjpeg(
+    camera_id: int,
+    max_frames: Optional[int] = Query(default=None, ge=1, le=10),
+):
     return StreamingResponse(
-        mjpeg_generator(camera_id),
+        mjpeg_generator(camera_id, max_frames=max_frames),
         media_type="multipart/x-mixed-replace; boundary=frame",
     )
 
@@ -30,6 +33,20 @@ async def overlay_one(camera_id: int):
 @router.get("/api/stream/overlay")
 async def overlay_all():
     return StreamingResponse(overlay_event_stream(None), media_type="text/event-stream")
+
+
+@router.websocket("/ws/overlay")
+async def overlay_websocket(websocket: WebSocket):
+    """WebSocket fallback for clients that cannot consume SSE."""
+    from guardlens.streaming.stream import overlay_payload
+
+    await websocket.accept()
+    try:
+        while True:
+            await websocket.send_json(overlay_payload())
+            await __import__("asyncio").sleep(0.5)
+    except WebSocketDisconnect:
+        return
 
 
 @router.get("/api/stream/status")
