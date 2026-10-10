@@ -12,8 +12,9 @@ import threading
 import time
 from typing import Optional, Union
 
-import cv2
 import numpy as np
+
+from guardlens.capture.sources import create_source
 
 logger = logging.getLogger("guardlens.capture")
 
@@ -23,6 +24,8 @@ class CaptureWorker:
         self,
         camera_id: int,
         source: Union[int, str],
+        source_type: str = "opencv",
+        source_config: Optional[dict] = None,
         shutdown_event: Optional[threading.Event] = None,
         loop_files: bool = True,
         reconnect_backoff: float = 2.0,
@@ -30,6 +33,8 @@ class CaptureWorker:
     ):
         self.camera_id = camera_id
         self.source = source
+        self.source_type = source_type
+        self.source_config = dict(source_config or {})
         self.shutdown_event = shutdown_event or threading.Event()
         self.loop_files = loop_files
         self.reconnect_backoff = reconnect_backoff
@@ -42,6 +47,9 @@ class CaptureWorker:
         self._fps: float = 0.0
         self._thread: Optional[threading.Thread] = None
         self._frames_read = 0
+        self._width = 0
+        self._height = 0
+        self._last_error: Optional[str] = None
 
     # --- lifecycle ---------------------------------------------------------
     def start(self) -> None:
@@ -73,55 +81,76 @@ class CaptureWorker:
     def fps(self) -> float:
         return self._fps
 
-    def _resolve_source(self) -> Union[int, str]:
-        s = self.source
-        if isinstance(s, str) and s.isdigit():
-            return int(s)
-        return s
+    @property
+    def last_error(self) -> Optional[str]:
+        return self._last_error
 
-    def _is_file(self) -> bool:
-        s = self.source
-        return isinstance(s, str) and not s.isdigit() and "://" not in s
+    @property
+    def resolution(self) -> tuple[int, int]:
+        return self._width, self._height
+
+    @property
+    def last_frame_age(self) -> Optional[float]:
+        if not self._latest_ts:
+            return None
+        return max(0.0, time.time() - self._latest_ts)
 
     # --- main loop ---------------------------------------------------------
     def _run(self) -> None:
         backoff = self.reconnect_backoff
         while not self.shutdown_event.is_set():
-            src = self._resolve_source()
-            cap = cv2.VideoCapture(src)
-            if not cap.isOpened():
-                self._connected = False
-                logger.warning(
-                    "[cam %s] cannot open source %r; retrying in %.0fs",
-                    self.camera_id, self.source, backoff,
+            try:
+                adapter = create_source(
+                    self.source_type,
+                    self.source_config,
+                    legacy_source=self.source,
                 )
+            except Exception as exc:
+                self._connected = False
+                self._last_error = str(exc)
+                logger.error("[cam %s] invalid source config: %s", self.camera_id, exc)
+                break
+
+            if not adapter.open():
+                self._connected = False
+                self._last_error = adapter.status.error or "source open failed"
+                logger.warning(
+                    "[cam %s] %s; retrying in %.0fs",
+                    self.camera_id, self._last_error, backoff,
+                )
+                adapter.close()
                 if self._wait_or_shutdown(backoff):
-                    cap.release()
                     break
                 backoff = min(backoff * 2, self.max_backoff)
                 continue
 
             self._connected = True
-            backoff = self.reconnect_backoff  # reset on success
-            src_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+            self._last_error = None
+            backoff = self.reconnect_backoff
+            src_fps = adapter.status.fps or 30.0
+            self._width, self._height = adapter.status.width, adapter.status.height
             frame_interval = 1.0 / src_fps if src_fps > 0 else 1.0 / 30.0
-            logger.info("[cam %s] connected (%.1f fps source)", self.camera_id, src_fps)
+            logger.info(
+                "[cam %s] connected via %s (%dx%d @ %.1f fps)",
+                self.camera_id, self.source_type, self._width, self._height, src_fps,
+            )
 
             last = time.time()
             while not self.shutdown_event.is_set():
-                ok, frame = cap.read()
+                ok, frame = adapter.read()
                 if not ok or frame is None:
-                    if self._is_file() and self.loop_files:
-                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # loop sample video
+                    if adapter.is_file and self.loop_files and adapter.rewind():
                         continue
-                    logger.warning("[cam %s] stream dropped; reconnecting", self.camera_id)
+                    self._last_error = "frame read failed; reconnecting"
+                    logger.warning("[cam %s] %s", self.camera_id, self._last_error)
                     break
+                height, width = frame.shape[:2]
+                self._width, self._height = width, height
                 with self._lock:
                     self._latest = frame
                     self._latest_ts = time.time()
                 self._frames_read += 1
 
-                # measured FPS (EMA)
                 now = time.time()
                 dt = now - last
                 last = now
@@ -129,12 +158,11 @@ class CaptureWorker:
                     inst = 1.0 / dt
                     self._fps = inst if self._fps == 0 else 0.9 * self._fps + 0.1 * inst
 
-                # pace to roughly source fps to avoid pegging a CPU core
                 sleep = frame_interval - (time.time() - now)
                 if sleep > 0:
                     time.sleep(sleep)
 
-            cap.release()
+            adapter.close()
             self._connected = False
 
         self._connected = False

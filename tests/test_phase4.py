@@ -64,7 +64,7 @@ def test_animal_vehicle_stationary_and_fall_rules():
 
 def test_zone_and_rule_crud_are_schema_driven():
     with TestClient(app) as client:
-        camera = client.post("/api/cameras", json={"name": "Door", "source": "bad://", "analyze_fps": 2}).json()
+        camera = client.post("/api/cameras", json={"name": "Door", "source": "http://127.0.0.1:9/video", "analyze_fps": 2}).json()
         client.patch(f"/api/cameras/{camera['id']}", json={"enabled": False})
         zone = client.post(f"/api/cameras/{camera['id']}/zones", json={"name": "Entry", "polygon": [[0,0],[1,0],[1,1],[0,1]]})
         assert zone.status_code == 201

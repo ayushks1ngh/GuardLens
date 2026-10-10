@@ -49,7 +49,7 @@ def test_websocket_overlay_fallback():
 
 def test_full_api_happy_path():
     with TestClient(app) as client:
-        camera = client.post("/api/cameras", json={"name": "Lobby", "source": "invalid://source"}).json()
+        camera = client.post("/api/cameras", json={"name": "Lobby", "source": "http://127.0.0.1:9/video"}).json()
         cid = camera["id"]
         client.patch(f"/api/cameras/{cid}", json={"enabled": False})
         zone = client.post(f"/api/cameras/{cid}/zones", json={"name": "Door", "polygon": [[0,0],[1,0],[1,1],[0,1]]}).json()

@@ -22,7 +22,11 @@ def utcnow() -> datetime:
 class Camera(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
+    # ``source`` remains as the backward-compatible display/open value. New
+    # transports use source_type + JSON source_config (migration-safe seam).
     source: str
+    source_type: str = Field(default="opencv", index=True)
+    source_config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(SA_JSON))
     enabled: bool = True
     analyze_fps: Optional[float] = None
     created_at: datetime = Field(default_factory=utcnow)
@@ -133,7 +137,36 @@ def init_engine(db_url: str):
     connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
     _engine = create_engine(db_url, connect_args=connect_args)
     SQLModel.metadata.create_all(_engine)
+    _migrate_camera_sources(_engine)
     return _engine
+
+
+def _migrate_camera_sources(engine) -> None:
+    """Add Phase-A camera columns to existing databases without data loss.
+
+    A full migration framework can replace this small additive migration when
+    schema evolution grows. Existing source strings remain authoritative and
+    are interpreted by the OpenCV adapter when source_config is empty.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if "camera" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("camera")}
+    with engine.begin() as connection:
+        if "source_type" not in columns:
+            connection.execute(text(
+                "ALTER TABLE camera ADD COLUMN source_type VARCHAR NOT NULL DEFAULT 'opencv'"
+            ))
+        if "source_config" not in columns:
+            # JSON is represented as TEXT on SQLite; '{}' preserves old rows.
+            connection.execute(text(
+                "ALTER TABLE camera ADD COLUMN source_config JSON NOT NULL DEFAULT '{}'"
+            ))
+        connection.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_camera_source_type ON camera (source_type)"
+        ))
 
 
 def get_engine():

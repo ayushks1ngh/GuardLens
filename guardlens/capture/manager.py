@@ -26,14 +26,25 @@ class CameraManager:
         with Session(get_engine()) as session:
             cameras = session.exec(select(Camera).where(Camera.enabled == True)).all()  # noqa: E712
         for cam in cameras:
-            self.start_camera(cam.id, cam.source)
+            self.start_camera(cam.id, cam.source, cam.source_type, cam.source_config)
 
-    def start_camera(self, camera_id: int, source: str) -> None:
+    def start_camera(
+        self,
+        camera_id: int,
+        source: str,
+        source_type: str = "opencv",
+        source_config: Optional[dict] = None,
+    ) -> None:
         with self._lock:
             existing = self._workers.get(camera_id)
             if existing:
                 existing.stop()
-            worker = CaptureWorker(camera_id=camera_id, source=source)
+            worker = CaptureWorker(
+                camera_id=camera_id,
+                source=source,
+                source_type=source_type,
+                source_config=source_config,
+            )
             worker.start()
             self._workers[camera_id] = worker
         logger.info("started worker for camera %s", camera_id)
@@ -63,6 +74,10 @@ class CameraManager:
                     "camera_id": cid,
                     "connected": w.connected,
                     "fps": round(w.fps, 1),
+                    "source_type": w.source_type,
+                    "resolution": {"width": w.resolution[0], "height": w.resolution[1]},
+                    "last_frame_age": round(w.last_frame_age, 2) if w.last_frame_age is not None else None,
+                    "error": w.last_error,
                 }
                 for cid, w in self._workers.items()
             ]
