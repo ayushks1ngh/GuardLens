@@ -33,12 +33,14 @@ class Config(BaseModel):
     db_url: str = ""  # derived from data_dir if empty
 
     # Analysis
+    analysis_enabled: bool = True
     analyze_fps: float = 6.0
     model_weights: str = "yolov8n.pt"
     device: str = "cpu"
 
     # Enabled plugins (keys resolved against the registries)
     detectors: list[dict[str, Any]] = Field(default_factory=lambda: [{"key": "object"}])
+    rules: list[dict[str, Any]] = Field(default_factory=list)
     notifiers: list[dict[str, Any]] = Field(default_factory=list)
 
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
@@ -57,7 +59,10 @@ class Config(BaseModel):
 
 def _apply_env_overrides(data: dict[str, Any]) -> dict[str, Any]:
     """Override top-level scalar keys from GUARDLENS_<KEY> env vars."""
-    for key in ("host", "port", "data_dir", "db_url", "analyze_fps", "model_weights", "device"):
+    for key in (
+        "host", "port", "data_dir", "db_url", "analysis_enabled",
+        "analyze_fps", "model_weights", "device",
+    ):
         env_key = f"GUARDLENS_{key.upper()}"
         if env_key in os.environ:
             data[key] = os.environ[env_key]

@@ -39,13 +39,48 @@ async def lifespan(app: FastAPI):
     init_engine(cfg.resolved_db_url())
     logger.info("Database ready at %s", cfg.resolved_db_url())
 
+    from guardlens.events.store import event_store
+    event_store.configure(cfg.snapshots_dir())
+    from guardlens.detectors._face_runtime import face_runtime
+    face_runtime.configure(cfg.faces_dir())
+    from guardlens.notifiers import dispatcher
+    dispatcher.reload()
+    from guardlens.reporting.activity import activity_sampler
+    activity_sampler.configure(
+        cfg.reporting.activity_interval_seconds,
+        cfg.reporting.retention_days,
+    )
+    from guardlens.reporting import reporting_runtime
+    reporting_runtime.generator = cfg.reporting.generator
+    from guardlens.reporting.maintenance import prune_activity
+    pruned = prune_activity(cfg.reporting.retention_days)
+    if pruned:
+        logger.info("Pruned %s expired activity rows", pruned)
+
     # Start capture workers for enabled cameras.
     manager.start_all()
     logger.info("Camera workers started: %s", manager.status())
 
+    # Configure + start the analysis pipeline (detectors + tracker + rules).
+    if cfg.analysis_enabled:
+        try:
+            from guardlens.analysis.pipeline import analysis_manager
+            analysis_manager.configure(cfg)
+            analysis_manager.start_all()
+            logger.info("Analysis pipeline started.")
+        except Exception:
+            logger.exception("analysis pipeline failed to start (continuing without it)")
+    else:
+        logger.info("Analysis pipeline disabled by configuration.")
+
     yield
 
     logger.info("GuardLens shutting down...")
+    try:
+        from guardlens.analysis.pipeline import analysis_manager
+        analysis_manager.stop_all()
+    except Exception:
+        logger.exception("error stopping analysis pipeline")
     manager.stop_all()
 
 
@@ -58,9 +93,19 @@ def create_app() -> FastAPI:
 
     # Routers
     from guardlens.api.cameras import router as cameras_router
+    from guardlens.api.events import router as events_router
+    from guardlens.api.faces import router as faces_router
+    from guardlens.api.operations import router as operations_router
+    from guardlens.api.reporting import router as reporting_router
+    from guardlens.api.rules import router as rules_router
     from guardlens.api.stream import router as stream_router
 
     app.include_router(cameras_router)
+    app.include_router(events_router)
+    app.include_router(faces_router)
+    app.include_router(operations_router)
+    app.include_router(reporting_router)
+    app.include_router(rules_router)
     app.include_router(stream_router)
 
     @app.get("/health")
@@ -71,7 +116,9 @@ def create_app() -> FastAPI:
             "version": __version__,
             "python": platform.python_version(),
             "device": getattr(cfg, "device", "unknown"),
+            "analysis_enabled": getattr(cfg, "analysis_enabled", False),
             "analyze_fps": getattr(cfg, "analyze_fps", None),
+            "detectors": [d.get("key") for d in getattr(cfg, "detectors", [])],
             "cameras": manager.status(),
         }
 
@@ -82,9 +129,11 @@ def create_app() -> FastAPI:
             return {"error": {"code": "not_ready", "message": "Config not loaded yet"}}
         return {
             "analyze_fps": cfg.analyze_fps,
+            "analysis_enabled": cfg.analysis_enabled,
             "device": cfg.device,
             "model_weights": cfg.model_weights,
             "detectors": cfg.detectors,
+            "rules": cfg.rules,
             "reporting": cfg.reporting.model_dump(),
         }
 

@@ -9,6 +9,7 @@ data_dir: data
 db_url: ""
 
 # Analysis
+analysis_enabled: true
 analyze_fps: 6.0
 model_weights: yolov8n.pt
 device: cpu
@@ -16,6 +17,25 @@ device: cpu
 # Enabled detector plugins (resolved against the detector registry)
 detectors:
   - key: object
+    conf: 0.35
+  - key: face
+    backend: opencv
+    min_size: 40
+
+# Enabled rules. Params remain JSON/config-driven; no schema changes are needed.
+rules:
+  - type: object_class
+    name: person-watch
+    severity: warning
+    cooldown_seconds: 30
+    params:
+      classes: [person]
+      min_confidence: 0.35
+  - type: unknown_face
+    name: face-policy
+    severity: critical
+    cooldown_seconds: 30
+    params: {}
 
 # Notifier plugins (configured at runtime via the API as well)
 notifiers: []
