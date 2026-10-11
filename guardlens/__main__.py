@@ -8,7 +8,10 @@ from guardlens.config import load_config
 
 def main() -> None:
     cfg = load_config()
-    uvicorn.run("guardlens.app:app", host=cfg.host, port=cfg.port, log_level="info")
+    kwargs = {"host": cfg.host, "port": cfg.port, "log_level": "info"}
+    if cfg.ssl_certfile and cfg.ssl_keyfile:
+        kwargs.update(ssl_certfile=cfg.ssl_certfile, ssl_keyfile=cfg.ssl_keyfile)
+    uvicorn.run("guardlens.app:app", **kwargs)
 
 
 if __name__ == "__main__":

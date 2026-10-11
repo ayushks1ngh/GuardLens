@@ -5,6 +5,7 @@ import sqlite3
 import time
 from pathlib import Path
 
+import cv2
 import numpy as np
 from fastapi.testclient import TestClient
 from sqlalchemy import inspect
@@ -22,10 +23,48 @@ def test_opencv_modes_and_source_discovery():
     opencv = next(item for item in types if item["key"] == "opencv")
     assert {mode["key"] for mode in opencv["modes"]} == {"device", "network", "file"}
     assert create_source("opencv", {"mode": "device", "device_index": 0}).legacy_source == "0"
+    device = create_source("opencv", {"mode": "device", "device_index": 0})
+    assert device.config["pixel_format"] == "MJPG"
+    assert (device.config["width"], device.config["height"], device.config["capture_fps"]) == (640, 480, 30)
     assert create_source("opencv", {"mode": "file", "path": SAMPLE}).legacy_source == SAMPLE
     network = create_source("opencv", {"mode": "network", "url": "http://user:pass@phone.local:8080/video"})
     assert network.config["url"].startswith("http://user:pass@")
 
+
+
+def test_device_capture_settings_are_applied(monkeypatch):
+    properties = []
+
+    class FakeCapture:
+        def isOpened(self): return True
+        def set(self, key, value): properties.append((key, value)); return True
+        def get(self, key):
+            return {
+                cv2.CAP_PROP_FPS: 15.0,
+                cv2.CAP_PROP_FRAME_WIDTH: 800.0,
+                cv2.CAP_PROP_FRAME_HEIGHT: 600.0,
+            }.get(key, 0.0)
+        def release(self): pass
+
+    opened = []
+    def fake_video_capture(value, backend):
+        opened.append((value, backend))
+        return FakeCapture()
+
+    monkeypatch.setattr(cv2, "VideoCapture", fake_video_capture)
+    adapter = create_source("opencv", {
+        "mode": "device", "device_index": 2, "pixel_format": "MJPG",
+        "width": 800, "height": 600, "capture_fps": 15,
+    })
+    try:
+        assert adapter.open()
+        assert opened[0][0] == 2
+        assert (cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) in properties
+        assert (cv2.CAP_PROP_FRAME_WIDTH, 800) in properties
+        assert (cv2.CAP_PROP_FRAME_HEIGHT, 600) in properties
+        assert (cv2.CAP_PROP_FPS, 15) in properties
+    finally:
+        adapter.close()
 
 def test_new_source_plugin_requires_no_capture_edits():
     @register_source
@@ -126,5 +165,6 @@ def test_dashboard_exposes_probe_first_source_wizard():
         html = client.get("/").text
         for marker in ("source-modes", "probe-cam-btn", "cam-device", "cam-url", "cam-path"):
             assert f'id="{marker}"' in html
-        assert "WebRTC pairing · Phase B" in html
+        assert "Secure WebRTC pairing" in html
+        assert 'id="create-pairing-btn"' in html
         assert 'id="add-cam-btn" disabled' in html

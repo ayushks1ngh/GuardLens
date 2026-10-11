@@ -37,7 +37,8 @@ the core**. We achieve this with three plugin registries — **Detectors**,
 ### 2.1 Capture sources + worker (`guardlens/capture/`)
 - Auto-discovered `CameraSource` adapters implement `open/read/close/status`.
 - Phase A `OpenCvSource` supports host device indexes, files, RTSP, HTTP, and MJPEG;
-  Phase B adds a browser/WebRTC publisher adapter without changing analysis.
+  `WebRtcSource` consumes permissioned, encrypted phone/laptop browser publishers through
+  short-lived hashed pairing and rotating reconnect credentials.
 - One capture worker per camera, running in its own thread and consuming its adapter.
 - Keeps only the **latest** frame (drops stale frames to avoid lag).
 - Handles reconnect with backoff and reports adapter type, resolution, frame age/errors.
@@ -52,8 +53,10 @@ the core**. We achieve this with three plugin registries — **Detectors**,
 - Passes the frame context (detections + tracks + timestamp + camera) to the rule engine.
 
 ### 2.3 Detector plugins (`guardlens/detectors/`)
-- Interface: `Detector.process(frame) -> list[Detection]`.
-- Built-in: `ObjectDetector` (YOLO/COCO), `FaceDetector` (detect + recognize).
+- Interface: `Detector.process_for_camera(camera_id, frame) -> list[Detection]`; the
+  default delegates to `process(frame)` for backward-compatible stateless plugins.
+- Built-in: `ObjectDetector` (YOLO/COCO), `FaceDetector`, `MotionDetector` (per-camera
+  MOG2 state), and optional `HandGestureDetector`.
 - New detectors register themselves; the pipeline runs whatever is enabled in config.
 
 ### 2.4 Rule engine + Rule plugins (`guardlens/rules/`)
@@ -84,6 +87,20 @@ the core**. We achieve this with three plugin registries — **Detectors**,
   MJPEG for video, and static serving for the dashboard. See `04-api-spec.md`.
 
 ### 2.9 Activity log & report generator (`guardlens/reporting/`)
+
+### 2.10 Recording (`guardlens/recording.py`)
+- Independent `ClipRecorder` consumes raw capture frames; detector/rule plugins never
+  own video writers.
+- Bounded per-camera pre-roll buffers; event/motion/post-roll clips and segmented
+  continuous mode; codec fallback, max duration, retention, quota, and low-disk checks.
+- Active files use `.partial` names and atomically finalize, so crashes cannot expose a
+  corrupt clip as complete; startup removes abandoned partials.
+
+### 2.11 Gesture vocabularies (`guardlens/gestures/`)
+- Auto-discovered vocabulary plugins classify normalized 21-point hand landmarks.
+- `basic_gestures` is model-free infrastructure. `asl_static` accepts an operator-supplied
+  licensed ONNX model and labels and is explicitly limited to isolated static handshapes.
+- Missing MediaPipe/model files disable only `HandGestureDetector`, not the application.
 - An **activity sampler** writes periodic per-camera scene summaries to the
   `activity_log` table (counts of people/animals/vehicles, recognized persons, active
   zones) at a configurable interval — a continuous record of "what was happening,"
@@ -129,8 +146,8 @@ the core**. We achieve this with three plugin registries — **Detectors**,
 | Layer | Choice | Notes |
 |-------|--------|-------|
 | Language | Python 3.12 | matches host |
-| Web | FastAPI + Uvicorn | async, same family as original |
-| CV | OpenCV | capture + drawing |
+| Web | FastAPI + Uvicorn + aiortc | REST/SSE/WS, optional TLS, browser WebRTC ingest |
+| CV | OpenCV | capture, MOG2 motion, evidence and clip writing |
 | Detection | Ultralytics YOLO (default) / pluggable | **AGPL** — fallback documented in ADRs |
 | Tracking | lightweight IoU/centroid tracker | pure Python/NumPy, CPU-cheap |
 | Face | OpenCV baseline / pluggable InsightFace or `face_recognition` | ADR-003 |

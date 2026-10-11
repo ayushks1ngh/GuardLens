@@ -10,6 +10,11 @@ venv/
 # Data / runtime (keep sample video, ignore generated artifacts)
 data/snapshots/
 data/faces/
+data/clips/
+data/backups/
+data/tls/
+.env
+*.key
 data/*.db
 data/*.sqlite3
 *.log
@@ -22,3 +27,5 @@ data/*.sqlite3
 .DS_Store
 .idea/
 .vscode/
+data/*.pid
+.kiro/

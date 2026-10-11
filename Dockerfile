@@ -10,6 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 li
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN mkdir -p data/snapshots data/faces
+RUN mkdir -p data/snapshots data/faces data/clips
 EXPOSE 8080
 CMD ["python", "-m", "guardlens"]

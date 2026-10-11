@@ -6,6 +6,11 @@ __pycache__
 data/*.db
 data/snapshots
 data/faces
+data/clips
+.env
+*.key
+data/backups
+data/tls
 *.pt
 *.onnx
 *.log

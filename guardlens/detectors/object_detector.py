@@ -51,12 +51,14 @@ class ObjectDetector(Detector):
         self._weights = "yolov8n.pt"
         self._conf = 0.35
         self._device = "cpu"
+        self._imgsz = 640
         self._infer_lock: Optional[threading.Lock] = None
 
     def setup(self, config: dict) -> None:
         self._weights = config.get("weights", config.get("model_weights", self._weights))
         self._conf = float(config.get("conf", self._conf))
         self._device = config.get("device", self._device)
+        self._imgsz = int(config.get("imgsz", self._imgsz))
         self._model = _load_model(self._weights)
         self._infer_lock = _INFERENCE_LOCKS[self._weights]
 
@@ -68,7 +70,8 @@ class ObjectDetector(Detector):
             return []
         with self._infer_lock:  # type: ignore[arg-type]
             results = self._model.predict(
-                frame, conf=self._conf, device=self._device, verbose=False
+                frame, conf=self._conf, device=self._device,
+                imgsz=self._imgsz, verbose=False
             )
         detections: list[Detection] = []
         for res in results:

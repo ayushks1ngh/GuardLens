@@ -22,6 +22,13 @@ torchvision==0.20.1+cpu
 # NOTE: Ultralytics is AGPL-3.0 — see docs/06-tech-decisions.md ADR-002.
 ultralytics==8.3.58
 
+# --- Browser camera transport (Phase B) ---
+aiortc==1.15.0
+qrcode==8.2
+
+# --- Vision-language chat (optional; direct use of requests) ---
+requests==2.34.2
+
 # --- Testing ---
 pytest==8.3.4
 httpx==0.28.1

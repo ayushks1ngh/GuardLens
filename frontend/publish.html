@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GuardLens Camera Publisher</title>
+  <style>
+    body{font:16px system-ui;background:#0b1020;color:#e8edf7;margin:0;min-height:100vh;display:grid;place-items:center}
+    main{width:min(720px,92vw)} video{width:100%;background:#000;border-radius:12px;max-height:65vh}
+    button,select{font:inherit;padding:.7rem 1rem;margin:.4rem .2rem;border-radius:8px} .status{padding:.75rem 0;color:#aab5ce}
+  </style>
+</head>
+<body><main>
+  <h1>Publish this camera to GuardLens</h1>
+  <p>This page sends encrypted WebRTC video only after you grant permission. Close it to stop publishing.</p>
+  <label>Camera <select id="camera"></select></label>
+  <label>Quality <select id="quality"><option value="640x480">640×480</option><option value="1280x720">1280×720</option></select></label>
+  <button id="start">Start secure camera</button><button id="stop" disabled>Stop</button>
+  <div id="status" class="status">Ready. Camera permission has not been requested.</div>
+  <video id="preview" autoplay muted playsinline></video>
+<script>
+const fragment=new URLSearchParams(location.hash.slice(1)), query=new URLSearchParams(location.search);
+const streamId=fragment.get('stream_id')||query.get('stream_id');
+let token=fragment.get('token'), reconnect=false;
+if(streamId&&!token){token=sessionStorage.getItem('guardlens-reconnect-'+streamId);reconnect=!!token}
+const video=document.getElementById('preview'), statusEl=document.getElementById('status'), camera=document.getElementById('camera');
+let pc=null, media=null;
+function status(text){statusEl.textContent=text}
+async function devices(){const all=await navigator.mediaDevices.enumerateDevices();camera.innerHTML=all.filter(d=>d.kind==='videoinput').map((d,i)=>`<option value="${d.deviceId}">${d.label||'Camera '+(i+1)}</option>`).join('')}
+async function stop(){if(media)media.getTracks().forEach(t=>t.stop());if(pc)pc.close();media=null;pc=null;video.srcObject=null;document.getElementById('start').disabled=false;document.getElementById('stop').disabled=true;status('Stopped and camera released.')}
+document.getElementById('start').onclick=async()=>{
+  if(!streamId||!token){status('Invalid or incomplete pairing link.');return}
+  try{
+    const [width,height]=document.getElementById('quality').value.split('x').map(Number);
+    media=await navigator.mediaDevices.getUserMedia({video:{deviceId:camera.value?{exact:camera.value}:undefined,width:{ideal:width},height:{ideal:height},facingMode:{ideal:'environment'}},audio:false});
+    video.srcObject=media;await devices();pc=new RTCPeerConnection({iceServers:[]});media.getVideoTracks().forEach(track=>pc.addTrack(track,media));
+    pc.onconnectionstatechange=()=>status('WebRTC: '+pc.connectionState);
+    await pc.setLocalDescription(await pc.createOffer());
+    await new Promise(resolve=>{if(pc.iceGatheringState==='complete')resolve();else pc.addEventListener('icegatheringstatechange',()=>pc.iceGatheringState==='complete'&&resolve())});
+    const response=await fetch('/api/pairing/offer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stream_id:streamId,token,sdp:pc.localDescription.sdp,type:pc.localDescription.type,reconnect})});
+    const answer=await response.json();if(!response.ok)throw new Error(answer.detail||'Pairing failed');
+    sessionStorage.setItem('guardlens-reconnect-'+streamId,answer.reconnect_token);token=answer.reconnect_token;reconnect=true;
+    await pc.setRemoteDescription(answer);
+    history.replaceState({},'',location.pathname+'?stream_id='+encodeURIComponent(streamId));document.getElementById('start').disabled=true;document.getElementById('stop').disabled=false;status('Secure camera connected.');
+  }catch(error){status('Could not publish: '+error.message);await stop()}
+};
+document.getElementById('stop').onclick=stop;window.addEventListener('beforeunload',()=>{if(media)media.getTracks().forEach(t=>t.stop())});devices().catch(()=>{});
+</script></main></body></html>

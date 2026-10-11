@@ -20,6 +20,22 @@ logger = logging.getLogger("guardlens.detectors")
 class Detector:
     """Base interface every detector plugin implements."""
 
+    camera_ids: Optional[frozenset[int]] = None
+    max_fps: float = 0.0
+
+    def applies_to(self, camera_id: int) -> bool:
+        return self.camera_ids is None or camera_id in self.camera_ids
+
+    def should_process(self, camera_id: int, timestamp: float) -> bool:
+        if not self.applies_to(camera_id):
+            return False
+        if self.max_fps <= 0:
+            return True
+        last = getattr(self, "_last_processed_by_camera", {}).get(camera_id, 0.0)
+        if timestamp - last < 1.0 / self.max_fps:
+            return False
+        self._last_processed_by_camera[camera_id] = timestamp
+        return True
     key: str = ""
 
     def setup(self, config: dict) -> None:
@@ -27,6 +43,14 @@ class Detector:
 
     def process(self, frame: np.ndarray) -> list[Detection]:  # pragma: no cover
         raise NotImplementedError
+
+    def process_for_camera(self, camera_id: int, frame: np.ndarray) -> list[Detection]:
+        """Process a frame with optional per-camera state.
+
+        Stateless/model-backed plugins inherit this delegation. Stateful plugins
+        override it so shared detector instances never leak state across cameras.
+        """
+        return self.process(frame)
 
     def teardown(self) -> None:
         """Release resources (optional)."""
@@ -63,6 +87,10 @@ def create_detector(key: str, config: dict) -> Detector:
     if cls is None:
         raise KeyError(f"unknown detector key {key!r}; available: {available_detectors()}")
     inst = cls()
+    camera_ids = config.get("camera_ids")
+    inst.camera_ids = frozenset(int(value) for value in camera_ids) if camera_ids is not None else None
+    inst.max_fps = max(0.0, float(config.get("fps", 0.0)))
+    inst._last_processed_by_camera = {}
     inst.setup(config)
     return inst
 

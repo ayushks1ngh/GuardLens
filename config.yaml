@@ -17,7 +17,8 @@ device: cpu
 # Enabled detector plugins (resolved against the detector registry)
 detectors:
   - key: object
-    conf: 0.35
+    conf: 0.4
+    imgsz: 640
   - key: face
     backend: opencv
     min_size: 40
@@ -45,3 +46,15 @@ reporting:
   activity_interval_seconds: 10.0
   retention_days: 30
   generator: structured
+
+# Independent clip recorder (off by default until an operator enables it)
+recording:
+  enabled: false
+  mode: event                 # off | motion | event | continuous
+  pre_roll_seconds: 5
+  post_roll_seconds: 10
+  max_clip_seconds: 120
+  segment_seconds: 300
+  retention_days: 7
+  quota_mb: 2048
+  codec_preferences: [mp4v, MJPG]

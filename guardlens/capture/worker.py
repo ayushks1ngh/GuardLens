@@ -124,14 +124,18 @@ class CaptureWorker:
                 backoff = min(backoff * 2, self.max_backoff)
                 continue
 
-            self._connected = True
+            # Opening a source is not enough to call it connected: some transports
+            # open successfully but never produce a frame.  Publish connected=True
+            # only after the first successful read so status fields such as
+            # last_frame_age are coherent for API/UI consumers.
+            self._connected = False
             self._last_error = None
             backoff = self.reconnect_backoff
             src_fps = adapter.status.fps or 30.0
             self._width, self._height = adapter.status.width, adapter.status.height
             frame_interval = 1.0 / src_fps if src_fps > 0 else 1.0 / 30.0
             logger.info(
-                "[cam %s] connected via %s (%dx%d @ %.1f fps)",
+                "[cam %s] source opened via %s (%dx%d @ %.1f fps)",
                 self.camera_id, self.source_type, self._width, self._height, src_fps,
             )
 
@@ -139,6 +143,7 @@ class CaptureWorker:
             while not self.shutdown_event.is_set():
                 ok, frame = adapter.read()
                 if not ok or frame is None:
+                    self._connected = False
                     if adapter.is_file and self.loop_files and adapter.rewind():
                         continue
                     self._last_error = "frame read failed; reconnecting"
@@ -149,6 +154,15 @@ class CaptureWorker:
                 with self._lock:
                     self._latest = frame
                     self._latest_ts = time.time()
+                    frame_timestamp = self._latest_ts
+                    self._connected = True
+                try:
+                    from guardlens.recording import clip_recorder
+                    clip_recorder.on_frame(
+                        self.camera_id, frame, frame_timestamp, adapter.status.fps or self._fps
+                    )
+                except Exception:
+                    logger.exception("[cam %s] recording observer failed; capture continues", self.camera_id)
                 self._frames_read += 1
 
                 now = time.time()

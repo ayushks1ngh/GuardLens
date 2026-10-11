@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -20,6 +21,10 @@ class OpenCvSource(CameraSource):
             "label": "Camera attached to the GuardLens computer",
             "fields": [
                 {"key": "device_index", "label": "Device index", "type": "integer", "default": 0},
+                {"key": "pixel_format", "label": "Pixel format", "type": "select", "default": "MJPG", "options": ["MJPG", "YUYV", "AUTO"]},
+                {"key": "width", "label": "Width", "type": "integer", "default": 640},
+                {"key": "height", "label": "Height", "type": "integer", "default": 480},
+                {"key": "capture_fps", "label": "Capture FPS", "type": "integer", "default": 30},
             ],
         },
         {
@@ -62,6 +67,22 @@ class OpenCvSource(CameraSource):
             if index < 0 or index > 99:
                 raise ValueError("device_index must be between 0 and 99")
             clean["device_index"] = index
+            pixel_format = str(clean.get("pixel_format", "MJPG")).upper()
+            if pixel_format not in {"MJPG", "YUYV", "AUTO"}:
+                raise ValueError("pixel_format must be MJPG, YUYV, or AUTO")
+            clean["pixel_format"] = pixel_format
+            for key, default, minimum, maximum in (
+                ("width", 640, 1, 7680),
+                ("height", 480, 1, 4320),
+                ("capture_fps", 30, 1, 240),
+            ):
+                try:
+                    value = int(clean.get(key, default))
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(f"{key} must be an integer") from exc
+                if value < minimum or value > maximum:
+                    raise ValueError(f"{key} must be between {minimum} and {maximum}")
+                clean[key] = value
         elif mode == "network":
             url = str(clean.get("url") or source or "").strip()
             parsed = urlsplit(url)
@@ -116,7 +137,18 @@ class OpenCvSource(CameraSource):
             ]
             self._capture = cv2.VideoCapture(self._value, cv2.CAP_FFMPEG, params)
         else:
-            self._capture = cv2.VideoCapture(self._value)
+            backend = cv2.CAP_V4L2 if self._mode == "device" and sys.platform.startswith("linux") else cv2.CAP_ANY
+            self._capture = cv2.VideoCapture(self._value, backend)
+            if self._mode == "device" and self._capture.isOpened():
+                pixel_format = self.config["pixel_format"]
+                if pixel_format != "AUTO":
+                    self._capture.set(
+                        cv2.CAP_PROP_FOURCC,
+                        cv2.VideoWriter_fourcc(*pixel_format),
+                    )
+                self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.config["width"])
+                self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config["height"])
+                self._capture.set(cv2.CAP_PROP_FPS, self.config["capture_fps"])
 
         if not self._capture.isOpened():
             self.status.opened = False

@@ -145,7 +145,7 @@ models and representative data. Product wording must match actual capability.
 
 ## 4. Delivery order and acceptance gates
 
-### Improvement Phase A — Source abstraction and cleanup (backend + wizard built; hardware check pending)
+### Improvement Phase A — Source abstraction and cleanup (implemented; cleanup choice pending)
 
 - [x] Add safe additive camera migration (`source_type`, JSON `source_config`).
 - [x] Add auto-discovered `CameraSource` registry and OpenCV adapter.
@@ -153,76 +153,89 @@ models and representative data. Product wording must match actual capability.
 - [x] Add source schema/device/probe APIs and probe-first dashboard wizard.
 - [x] Add resolution, frame-age, source-type, and error status.
 - [x] Verify sample file and real local HTTP/MJPEG transport through the same adapter.
-- [ ] Verify a physical host webcam (no `/dev/video*` is exposed in this environment).
+- [x] Verify a physical host webcam: Windows `USB2.0 HD UVC WebCam` attached to WSL2,
+  passed one-frame probe and sustained dual-source worker/API/MJPEG checks at 640×480.
+  The adapter now negotiates MJPEG by default because YUYV times out over WSL USB/IP.
 - [ ] Archive/fix the old local DB containing 17 duplicate sample cameras (requires user approval).
 
 **Gate A:** automated adapter/migration/API/wizard tests pass and existing tests remain
-green. Final closure requires one physical host-webcam check and an approved duplicate-
-camera cleanup. RTSP uses the same FFmpeg-backed network adapter as verified HTTP/MJPEG,
-but a real RTSP device should also be checked when available.
+green. Physical host-webcam verification is complete; final closure requires an approved
+duplicate-camera cleanup. RTSP uses the same FFmpeg-backed network adapter as verified
+HTTP/MJPEG, but a real RTSP device should also be checked when available.
 
-### Improvement Phase B — Phone/laptop browser cameras
+### Improvement Phase B — Phone/laptop browser cameras (implemented; physical gate pending)
 
-- HTTPS development setup, WebRTC signaling, publisher page, pairing QR/link,
-  front/back camera selection, quality controls, revoke/reconnect workflow.
-- Bounded shared analysis scheduler for multiple sources.
+- [x] Optional HTTPS launch configuration, WebRTC signaling, publisher page, inline QR/link.
+- [x] Front/back device selection via browser camera chooser and quality controls.
+- [x] Hashed expiring single-use pairing, rotating reload credential, revoke workflow.
+- [x] Bounded frame hub and non-queuing shared detector inference across sources.
+- [x] Synthetic aiortc offer/answer and three-publisher isolation/soak tests.
+- [ ] Run the final two-phone/laptop + host-camera physical reconnect/leakage soak.
 
-**Gate B:** two phones/laptops and one host camera connect concurrently; unplug/reload
-recovers; each receives correct overlays/events without cross-camera frame leakage.
+**Gate B:** implementation and synthetic media/load checks pass. Final acceptance remains
+pending until two real browser publishers and one host camera run concurrently and recover
+from physical unplug/reload under HTTPS without cross-camera leakage.
 
-### Improvement Phase C — Motion and clip recording
+### Improvement Phase C — Motion and clip recording (implemented; operator gate pending)
 
-- Motion detector/rule, pre/post-roll recorder, recording modes, event clip API/player,
-  retention/quota, disk-full and codec failure handling.
+- [x] Per-camera MOG2 motion detector and schema-driven motion rule.
+- [x] Independent pre/post-roll recorder with event/motion/continuous modes.
+- [x] Bounded clips, segmentation, codec fallback, low-disk errors, quota/retention.
+- [x] Atomic partial-file finalization/recovery and reference-aware clip deletion.
+- [x] Event clip API and dashboard player; generated-clip playback tests pass.
+- [ ] Final operator playback and real low-disk/restart scenario check.
 
-**Gate C:** motion starts one bounded clip with pre/post-roll; cooldown avoids clip
-floods; no-motion stops recording; event clip plays/downloads; restart/low-disk tests
-leave no corrupt active writer.
+**Gate C:** automated motion, pre/post-roll, cooldown via rule engine, codec failure,
+retention, restart recovery, linking, playback, and download checks pass. Final physical
+operator check remains.
 
-### Improvement Phase D — Hand-gesture foundation
+### Improvement Phase D — Hand-gesture foundation (implemented; enabled-model gate pending)
 
-- MediaPipe hand-landmark backend and lightweight classifier adapter.
-- Structured overlays, per-camera enable/FPS, model/vocabulary registry, dataset tooling
-  outside the runtime service.
+- [x] Optional MediaPipe Tasks hand-landmark detector with structured hand attributes.
+- [x] Auto-discovered vocabulary registry and model-free `basic_gestures` classifier.
+- [x] Gesture/help/sequence rules, stability/chatter suppression, overlay attributes.
+- [x] Missing MediaPipe/model disables only the hand plugin.
+- [ ] Install an intentionally selected MediaPipe version/model and validate recorded/live clips.
 
-**Gate D:** basic gestures are stable on recorded test clips and one live camera;
-missing MediaPipe/model disables only this plugin, never GuardLens.
+**Gate D:** plugin/fallback/structure tests pass. Stability on recorded clips and one live
+camera is pending because no licensed MediaPipe landmarker model is bundled or downloaded.
 
-### Improvement Phase E — Chosen sign vocabulary
+### Improvement Phase E — Bounded ASL vocabulary (adapter implemented; accuracy gate pending)
 
-- Product decision: target language (for example ISL vs ASL), alphabet/isolated signs
-  vs continuous phrases, one/two hands, expected signer/camera conditions.
-- Build/license a representative dataset, temporal smoothing/sequence recognition,
-  confidence/unknown handling, evaluation split, and privacy documentation.
+- [x] Product scope selected: isolated static ASL fingerspelling only.
+- [x] Optional ONNX vocabulary adapter, confidence/unknown handling, sequence smoothing.
+- [x] Offline JSONL evaluation tool with per-label accuracy and unknown rate.
+- [x] UI/API metadata states exact vocabulary/scope; NARUTO remains reference-only.
+- [ ] Supply/license a representative model/dataset and evaluate unseen signers.
 
-**Gate E:** agreed vocabulary meets measured accuracy/latency on unseen people and real
-GuardLens camera conditions. UI labels the exact supported scope—never “full sign
-language” unless continuous translation is genuinely validated.
+**Gate E:** infrastructure is complete, but no accuracy claim is made. Final acceptance
+requires a licensed model/data split and measured latency/accuracy on unseen people in
+real GuardLens conditions; dynamic J/Z and continuous translation remain out of scope.
 
-### Improvement Phase F — Hardening and release
+### Improvement Phase F — Hardening and release (automated gates pass; physical soak pending)
 
-- End-to-end multi-device soak/load tests, HTTPS/auth review, bandwidth/CPU profiles,
-  recording retention recovery, docs, Docker, and upgrade/migration test.
+- [x] Signaling bounds/session caps, security headers, optional TLS, revoke/shutdown cleanup.
+- [x] Legacy 2.0 migration preservation and abandoned-clip recovery tests.
+- [x] Three synthetic publishers, latest-frame isolation, and bounded shared inference.
+- [x] Full regression, dependency, frontend syntax, Compose, Docker build validation.
+- [ ] Extended physical three-device soak with recording and all selected models enabled.
 
-**Gate F:** clean upgrade from 2.0 data, three concurrent publishers, recording and all
-enabled detectors run within agreed resource limits for an extended soak period.
+**Gate F:** automated upgrade/security/recovery/Docker/load gates pass. Release sign-off
+still requires the extended real-device/model resource soak and final operator review.
 
-## 5. Decisions required before implementation
+## 5. Decisions applied for implementation
 
-1. **First phone path:** quick IP-camera-app URL support first, or browser-only WebRTC?
-   Recommendation: support existing RTSP/MJPEG immediately through the adapter wizard,
-   then build browser WebRTC pairing as the durable no-app experience.
-2. **Network scope:** LAN only first (recommended) or internet access? Internet support
-   requires stronger auth, TLS, TURN, abuse controls, and deployment decisions.
-3. **Recording mode/defaults:** motion clips only, event clips, continuous segments, or
-   all selectable? Recommendation: selectable; default event/motion, continuous off.
-4. **Retention:** proposed defaults: 5-second pre-roll, 10-second post-roll, 2-minute
-   max clip, 7-day retention, configurable disk quota.
-5. **Sign language:** which language and scope? Recommendation: ship basic gestures as
-   infrastructure first; choose ISL/ASL and a bounded vocabulary before claiming sign
-   recognition.
-6. **NARUTO model:** include as an optional demo plugin or use only as architecture
-   reference? Recommendation: reference/optional extra, not a default security feature.
+The user authorized autonomous progress using recommended defaults. Applied choices:
+
+1. Existing RTSP/MJPEG support remains available; browser WebRTC is the durable no-app path.
+2. LAN-only first. Non-local browser publishing requires configured HTTPS; internet/TURN
+   is deferred until deployment authentication and abuse controls are selected.
+3. Recording modes are selectable; recording is off by default, with event as configured mode.
+4. Defaults: 5-second pre-roll, 10-second post-roll, 2-minute max, 7-day retention,
+   configurable 2 GiB quota.
+5. Gesture infrastructure ships first; language scope is bounded static ASL fingerspelling.
+   No continuous translation or accuracy claim without a licensed evaluated model.
+6. NARUTO is architecture reference-only, not a default security feature.
 
 ## 6. Documentation rule for every future session
 

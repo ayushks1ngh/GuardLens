@@ -35,6 +35,20 @@ expected to grow; additive changes only within a major version.
 
 | Method | Path | Purpose |
 |--------|------|---------|
+
+## Browser/WebRTC pairing
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/pairing` | Create 30–900s single-use pairing link + inline SVG QR; token is URL-fragment-only |
+| GET | `/api/pairing` | Non-secret pairing status (`used`, `connected`, `revoked`, expiry) |
+| POST | `/api/pairing/offer` | WebRTC offer/answer signaling; HTTPS required outside localhost |
+| DELETE | `/api/pairing/{stream_id}` | Revoke publisher, reconnect credential, media peer, and frame channel |
+| GET | `/publish#...` | Permission-gated phone/laptop publisher with camera/quality selection |
+
+Initial tokens and rotating reload credentials are stored only as hashes in memory.
+Signaling bodies and active sessions are bounded. LAN-only ICE is the current scope;
+internet/NAT publishing requires an intentionally configured TURN/auth deployment.
 | GET | `/stream/{camera_id}/mjpeg` | MJPEG stream for `<img src>` (the video); optional `?max_frames=1..10` bounds diagnostics/tests |
 | GET | `/api/stream/{camera_id}/overlay` (SSE) | Lightweight per-frame metadata: alert flag, counts, track boxes |
 | GET | `/api/events/stream` (SSE) | Global live feed of new events |
@@ -56,6 +70,33 @@ expected to grow; additive changes only within a major version.
 
 | Method | Path | Purpose |
 |--------|------|---------|
+
+## Recording
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/recording` | Effective persisted recording config plus active clips/errors |
+| PATCH | `/api/recording` | Atomically apply validated mode, pre/post-roll, retention, quota, codecs |
+
+Settings persist in the existing JSON `setting` table (no schema migration). Changing
+settings finalizes active writers first. Recording defaults off; operators explicitly
+enable event, motion, or segmented continuous mode.
+
+## Vision chat (optional VLM; ADR-010 seam)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/vision/status` | Whether a VLM is configured + model name |
+| POST | `/api/vision/ask` | `{ camera_id, question }` → sends that camera's current frame to a cloud VLM and returns a text answer |
+
+The model and key are configuration-only: `GUARDLENS_NVIDIA_API_KEY` (required to enable)
+and optional `GUARDLENS_VLM_MODEL` (default `meta/llama-3.2-11b-vision-instruct`). The
+key is read from the environment, never persisted or logged. **Asking transmits the
+selected camera's frame to the external provider** — opt-in and inert without a key.
+The `vlm_watch` rule reuses this to raise a `vlm_alert` event when the model reports
+configured keywords (e.g. knife, scissors, weapon) on a person/motion trigger, running
+the slow cloud call off the analysis loop.
+
 | GET | `/api/rules/types` | List available rule plugin types + their param schema |
 | GET | `/api/rules` | List configured rules (filter `?camera_id=`) |
 | POST | `/api/rules` | Create `{ type, name, camera_id?, zone_id?, severity, cooldown_seconds, params }` |
@@ -84,8 +125,9 @@ Example create (loitering):
 | POST | `/api/events/{id}/acknowledge` | Set status `acknowledged` |
 | POST | `/api/events/{id}/resolve` | Set status `resolved` `{ note? }` |
 | POST | `/api/events/{id}/notes` | Add a note `{ text }` |
-| DELETE | `/api/events/{id}` | Delete event + evidence file |
-| GET | `/history/...` | Static serving of snapshot/clip evidence |
+| GET | `/api/events/{id}/clip` | Stream/download finalized MP4/AVI clip evidence |
+| DELETE | `/api/events/{id}` | Delete event + unshared evidence files |
+| GET | `/history/...` | Static serving of snapshot evidence |
 
 ## Faces (recognition)
 

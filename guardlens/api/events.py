@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlmodel import Session, select
@@ -76,6 +77,20 @@ async def stream_events(last_event_id: Optional[str] = Header(default=None)):
     except ValueError:
         last = 0
     return StreamingResponse(event_stream(last), media_type="text/event-stream")
+
+
+@router.get("/{event_id}/clip")
+def get_event_clip(event_id: int):
+    with Session(get_engine()) as session:
+        event = _event_or_404(session, event_id)
+        if not event.clip_path:
+            raise HTTPException(404, "event has no clip")
+        from guardlens.recording import clip_recorder
+        path = clip_recorder.clips_dir / Path(event.clip_path).name
+        if not path.is_file():
+            raise HTTPException(404, "event clip file is unavailable")
+        media_type = "video/mp4" if path.suffix.lower() == ".mp4" else "video/x-msvideo"
+        return FileResponse(path, media_type=media_type, filename=path.name)
 
 
 @router.get("/{event_id}")

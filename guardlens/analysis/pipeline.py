@@ -25,6 +25,10 @@ from guardlens.types import FrameContext
 logger = logging.getLogger("guardlens.analysis")
 
 
+
+
+class InferenceBusy(Exception):
+    """Internal control flow: shared detector is processing another camera."""
 class AnalysisWorker:
     """Runs detection + tracking + rules for one camera."""
 
@@ -35,11 +39,13 @@ class AnalysisWorker:
         rule_engine: RuleEngine,
         analyze_fps: float,
         event_sink=None,
+        inference_lock: Optional[threading.Lock] = None,
     ):
         self.camera_id = camera_id
         self._detectors = detectors
         self._engine = rule_engine
         self._event_sink = event_sink
+        self._inference_lock = inference_lock or threading.Lock()
         self._tracker = CentroidTracker()
         self._interval = 1.0 / analyze_fps if analyze_fps > 0 else 0.2
         self._shutdown = threading.Event()
@@ -63,8 +69,17 @@ class AnalysisWorker:
     def analyze_once(self, frame, timestamp: float) -> FrameContext:
         """Run the full pipeline on a single frame (used by the loop + tests)."""
         detections = []
-        for det in self._detectors:
-            detections.extend(det.process(frame))
+        # Detector instances (and their model weights) are shared across cameras.
+        # Never queue behind a busy model: skip this frame and let the worker pull
+        # the newest frame next interval. This bounds CPU and stale-frame latency.
+        if not self._inference_lock.acquire(blocking=False):
+            raise InferenceBusy
+        try:
+            for det in self._detectors:
+                if det.should_process(self.camera_id, timestamp):
+                    detections.extend(det.process_for_camera(self.camera_id, frame))
+        finally:
+            self._inference_lock.release()
         detections = self._tracker.update(detections)
 
         h, w = frame.shape[:2]
@@ -112,6 +127,9 @@ class AnalysisWorker:
                 "bbox": [round(v, 4) for v in d.bbox],
                 "track_id": d.track_id,
                 "name": d.attributes.get("name"),
+                "handedness": d.attributes.get("handedness"),
+                "gesture": d.attributes.get("static_gesture"),
+                "vocabulary": d.attributes.get("vocabulary"),
             })
         overlay_store.update(self.camera_id, {
             "counts": counts,
@@ -132,6 +150,10 @@ class AnalysisWorker:
                 self._last_ts = ts
                 try:
                     self.analyze_once(frame, ts)
+                except InferenceBusy:
+                    # Do not mark this timestamp consumed; retry with whichever frame
+                    # is newest when inference capacity becomes available.
+                    self._last_ts = 0.0
                 except Exception:
                     logger.exception("[cam %s] analysis error", self.camera_id)
             elapsed = time.time() - start
@@ -149,6 +171,7 @@ class AnalysisManager:
         self._engine = RuleEngine()
         self._analyze_fps = 6.0
         self._lock = threading.Lock()
+        self._inference_lock = threading.Lock()
         self._configured = False
         self._active = False
 
@@ -208,12 +231,18 @@ class AnalysisManager:
             if existing:
                 existing.stop()
             from guardlens.events.store import event_store
+            from guardlens.events import Camera, get_engine
+            from sqlmodel import Session
+            with Session(get_engine()) as session:
+                camera = session.get(Camera, camera_id)
+                analyze_fps = camera.analyze_fps if camera and camera.analyze_fps else self._analyze_fps
             w = AnalysisWorker(
                 camera_id,
                 self._detectors,
                 self._engine,
-                self._analyze_fps,
+                analyze_fps,
                 event_sink=event_store.persist,
+                inference_lock=self._inference_lock,
             )
             w.start()
             self._workers[camera_id] = w

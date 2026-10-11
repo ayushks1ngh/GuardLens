@@ -27,8 +27,8 @@ Report (per date; derived from ActivityLog + Event)
 | id | int PK | |
 | name | str | human label |
 | source | str | backward-compatible display/open value (`"0"`, URL, or file path) |
-| source_type | str | adapter registry key; `opencv` in Phase A |
-| source_config | JSON | typed adapter config: mode plus device index, URL, path, timeouts, etc. |
+| source_type | str | adapter registry key (`opencv`, `webrtc`, or future plugin) |
+| source_config | JSON | typed adapter config; WebRTC stores only non-secret `stream_id`, never pairing credentials |
 | enabled | bool | default true |
 | analyze_fps | float | per-camera override, nullable |
 | created_at | datetime | |
@@ -76,7 +76,7 @@ A recorded alert.
 | rule_id | int FK → rule, nullable | |
 | person_id | int FK → person, nullable | set for face events |
 | snapshot_path | str | JPEG evidence path |
-| clip_path | str, nullable | optional short clip |
+| clip_path | str, nullable | finalized relative clip filename; multiple events may reference one clip |
 | metadata | JSON | bbox, track_id, counts, confidence, etc. |
 | created_at | datetime | indexed |
 | acknowledged_at | datetime, nullable | |
@@ -163,3 +163,5 @@ A generated daily report (cached so it isn't recomputed each view).
 - **Normalized polygon/line coords** make zones resolution-independent.
 - **Status + timestamps** on events implement the triage workflow and analytics.
 - Evidence (images/clips) lives on disk under `data/`; the DB stores paths only.
+- Pairing sessions/tokens are intentionally ephemeral and in-memory. Raw initial and
+  reconnect credentials are never persisted; only SHA-256 hashes live in process memory.

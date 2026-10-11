@@ -281,15 +281,103 @@ InsightFace/`face_recognition` remain replaceable higher-accuracy backends (ADR-
 **Automated validation — PASSED**
 - `tests/test_improvement_a.py`: 7 tests for registry extensibility, source modes,
   typed/legacy CRUD, one-frame probe, detailed status, migration, redaction, and wizard.
-- Full suite: **54/54 passed**; Python/frontend syntax, `pip check`, Compose config pass.
+- Fixed a capture-status race found during recovery: a source now becomes `connected`
+  only after its first frame, so resolution/freshness status is internally consistent.
+- Full suite: **55/55 passed**; Python/frontend syntax, `pip check`, Compose config pass.
 - Real local HTTP/MJPEG integration: network adapter read a 1920×1080 frame.
 - Sample file adapter/CLI: 1920×1080 @ 30 FPS.
 
-**Gate A still awaiting user/hardware input**
-- This Linux environment exposes no `/dev/video*`, so a physical host webcam could not
-  be tested here.
+**Gate A still awaiting user input**
+- Physical host webcam passed: Windows `USB2.0 HD UVC WebCam` was attached to WSL2;
+  source probe, sustained dual-source capture, REST status, two-frame MJPEG, and
+  disable/re-enable recovery all passed at 640×480 MJPEG.
+- Hardware testing exposed a WSL USB/IP compatibility issue: default YUYV opened but
+  timed out. Device sources now validate and apply configurable pixel format,
+  resolution, and capture FPS, with MJPEG 640×480 @ 30 FPS as safe defaults.
 - A real phone IP-camera app URL and real RTSP camera should be tested when available.
 - Existing real DB still has 17 duplicate enabled sample cameras; no rows were changed.
-  User must approve archive/fresh DB vs disable-all vs keep-one cleanup.
+  A verified backup exists under `data/backups/`; user must approve archive/fresh DB vs
+  disable-all vs keep-one cleanup.
 
 ---
+
+## Post-2.0 Improvements B–F — implementation checkpoint ✅/🧪
+
+**Phase B — browser/WebRTC cameras**
+- Added pinned `aiortc==1.15.0` and `qrcode==8.2`, auto-discovered `WebRtcSource`,
+  latest-frame push hub, permission-gated publisher page, inline QR/link wizard, camera
+  and quality selection, encrypted offer/answer media, revocation, and reconnect.
+- Initial tokens expire, are single-use and hashed; rotating reload credentials are also
+  hashed. Credentials stay in URL fragments (never HTTP access logs), camera JSON, or
+  list APIs. Signaling size/session caps and HTTPS-off-localhost enforcement are tested.
+- Shared inference uses non-blocking admission: busy models cause a frame skip, never a
+  stale queue. Real aiortc synthetic video and 3-publisher isolation/soak checks pass.
+
+**Phase C — motion and clips**
+- Added per-camera MOG2 detector + motion rule plugins and independent `ClipRecorder`.
+- Selectable event/motion/continuous modes; bounded pre/post-roll, max length, segmented
+  continuous clips, codec fallback, retention/quota/low-disk handling.
+- Active clips use partial filenames and atomically finalize; startup removes abandoned
+  partials. Events reference finalized clips; shared clips survive until last event is
+  removed. Clip API and dashboard player added.
+
+**Phases D/E — gestures and bounded ASL**
+- Added optional MediaPipe Tasks hand detector, auto-discovered gesture vocabularies,
+  model-free basic gestures, generic detection/help/sequence rules, stable-frame and
+  chatter suppression, structured overlay attributes, and offline evaluation tooling.
+- Added operator-supplied ONNX `asl_static` adapter scoped to isolated static ASL
+  fingerspelling. No model is bundled/downloaded and no accuracy/full-translation claim
+  is made. Missing MediaPipe/model files disable only that plugin.
+
+**Phase F — automated hardening**
+- Added optional TLS launch config and explicit `scripts/setup_dev_tls.sh` (no silent
+  trust-store changes), security/CSP/permission headers, signaling bounds, pairing
+  caps/expiry/revoke cleanup, legacy DB upgrade test, clip crash recovery, direct
+  three-publisher soak script, and container/runtime storage updates.
+- Added persisted recording settings API/UI through the existing JSON `setting` seam;
+  runtime mode/retention/quota changes need no schema migration. Per-camera analyze FPS
+  and generic detector `camera_ids`/`fps` scope are now honored.
+- Validation: **78/78 tests passed**, `pip check`, Python + dashboard/publisher syntax,
+  Compose config, 10-second 3-publisher soak, and Docker image build with aiortc/PyAV.
+
+**Final gates still requiring operator hardware/data**
+- Two real phone/laptop publishers + host camera under HTTPS with unplug/reload recovery.
+- Real motion/recording playback and extended low-disk/restart check.
+- Enabled MediaPipe landmarker + licensed gesture/ASL model on clips/live camera;
+  signer-disjoint accuracy/latency evaluation.
+- Extended three-device all-feature resource soak and final dashboard review.
+- Local DB cleanup remains pending explicit destructive-action choice; verified backup exists.
+
+No commit was created because the user did not explicitly request one.
+
+## Interactive testing session — VLM chat, phone IP camera, tuning, UI
+
+**Built**
+- Optional vision-language integration (ADR-010 seam): `guardlens/api/vision.py`
+  (`/api/vision/ask`, `/api/vision/status`) powers a dashboard "Ask the camera" chat
+  panel; `guardlens/vlm.py` + `rules/vlm_watch_rule.py` raise `vlm_alert` events when a
+  configured VLM reports keywords (knife/scissors/weapon) off the analysis loop.
+- VLM is env/config-only: `GUARDLENS_NVIDIA_API_KEY` + optional `GUARDLENS_VLM_MODEL`
+  (default `meta/llama-3.2-11b-vision-instruct`, chosen for ~1s latency vs a slow
+  reasoning model that hit free-tier 503s). Keys load from a gitignored `.env`.
+- Object detector gained `imgsz` config; model/conf are config-driven (tested n/m).
+- Dashboard: per-camera on/off switch, fullscreen, stream reload + self-heal, overlay
+  badge, zone draw mode (start/undo/clear + zone list), rule on/off switches, recording
+  controls with switch, and a camera chat panel that auto-syncs the camera dropdown.
+- Phone used as a camera two ways: verified **IP-camera URL** (network source, works
+  over WSL NAT) and **browser/WebRTC** path enabled via dev TLS (`setup_dev_tls.sh`),
+  `GUARDLENS_PUBLIC_URL`, and a Windows portproxy for inbound reach.
+- `scripts/testing_server.sh` runs a detached local server loading `.env` (key, TLS,
+  public URL) so secrets never pass on the CLI.
+
+**Operational notes / honest limits**
+- Stock YOLO is limited to 80 COCO classes: pen/"purse" are not labelable; knife and
+  scissors exist but are weak on nano. The VLM chat covers arbitrary-object questions.
+- The cloud VLM transmits frames to the provider (documented, opt-in).
+- WSL USB webcam and NAT inbound both need manual host steps (usbipd attach; portproxy).
+
+**Housekeeping**
+- Purged ~2,630 accumulated sample events/snapshots (1.4 GB → ~0) after DB backup;
+  scoped the broad `person-watch` rule to a single camera to stop the flood.
+- `.env`, `data/tls/`, `*.key`, `data/*.pid`, and `.kiro/` are gitignored; no key is in
+  any committable file (verified with `git grep`).

@@ -41,6 +41,16 @@ async def lifespan(app: FastAPI):
 
     from guardlens.events.store import event_store
     event_store.configure(cfg.snapshots_dir())
+    from guardlens.recording import clip_recorder
+    from guardlens.events import Setting, get_engine
+    from sqlmodel import Session
+    with Session(get_engine()) as session:
+        stored_recording = session.get(Setting, "recording")
+        if stored_recording is None:
+            stored_recording = Setting(key="recording", value=cfg.recording.model_dump())
+            session.add(stored_recording); session.commit()
+        recording_values = stored_recording.value
+    clip_recorder.configure(cfg.clips_dir(), recording_values)
     from guardlens.detectors._face_runtime import face_runtime
     face_runtime.configure(cfg.faces_dir())
     from guardlens.notifiers import dispatcher
@@ -81,6 +91,11 @@ async def lifespan(app: FastAPI):
         analysis_manager.stop_all()
     except Exception:
         logger.exception("error stopping analysis pipeline")
+    try:
+        from guardlens.capture.webrtc import pairing_service
+        await pairing_service.close_all()
+    except Exception:
+        logger.exception("error stopping WebRTC publishers")
     manager.stop_all()
 
 
@@ -91,22 +106,52 @@ def create_app() -> FastAPI:
     snapshots = Path(load_config().snapshots_dir())
     app.mount("/history", StaticFiles(directory=str(snapshots)), name="history")
 
+    @app.middleware("http")
+    async def security_headers(request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("Permissions-Policy", "camera=(self), microphone=()")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; "
+            "connect-src 'self' ws: wss:; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'",
+        )
+        if request.url.scheme == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        return response
+
     # Routers
     from guardlens.api.cameras import router as cameras_router
     from guardlens.api.events import router as events_router
     from guardlens.api.faces import router as faces_router
     from guardlens.api.operations import router as operations_router
+    from guardlens.api.pairing import router as pairing_router
+    from guardlens.api.recording import router as recording_router
     from guardlens.api.reporting import router as reporting_router
     from guardlens.api.rules import router as rules_router
     from guardlens.api.stream import router as stream_router
+    from guardlens.api.vision import router as vision_router
 
     app.include_router(cameras_router)
     app.include_router(events_router)
     app.include_router(faces_router)
     app.include_router(operations_router)
+    app.include_router(pairing_router)
+    app.include_router(recording_router)
     app.include_router(reporting_router)
     app.include_router(rules_router)
     app.include_router(stream_router)
+    app.include_router(vision_router)
+
+    @app.get("/publish", response_class=HTMLResponse)
+    async def publisher():
+        page = ROOT / "frontend" / "publish.html"
+        if page.exists():
+            return HTMLResponse(page.read_text(encoding="utf-8"))
+        return HTMLResponse("<h1>Publisher not found.</h1>", status_code=404)
 
     @app.get("/health")
     async def health():
@@ -120,6 +165,8 @@ def create_app() -> FastAPI:
             "analyze_fps": getattr(cfg, "analyze_fps", None),
             "detectors": [d.get("key") for d in getattr(cfg, "detectors", [])],
             "cameras": manager.status(),
+            "recording": __import__("guardlens.recording", fromlist=["clip_recorder"]).clip_recorder.status(),
+            "browser_publishers": __import__("guardlens.capture.webrtc", fromlist=["pairing_service"]).pairing_service.list_public(),
         }
 
     @app.get("/api/config")
@@ -135,6 +182,7 @@ def create_app() -> FastAPI:
             "detectors": cfg.detectors,
             "rules": cfg.rules,
             "reporting": cfg.reporting.model_dump(),
+            "recording": cfg.recording.model_dump(),
         }
 
     @app.get("/", response_class=HTMLResponse)

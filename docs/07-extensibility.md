@@ -65,8 +65,9 @@ class WebRtcSource(CameraSource):
 
 Source modules are auto-discovered. `GET /api/cameras/source-types` exposes adapter/mode
 schemas to the source wizard. Capture and analysis consume only the source contract, so
-adding WebRTC or another transport does not edit the core frame pipeline. Credentials
-remain in persisted `source_config` but are redacted from operator API responses.
+adding WebRTC or another transport does not edit the core frame pipeline. Persisted
+`source_config` contains only adapter runtime configuration; short-lived WebRTC pairing
+and reconnect credentials remain hashed and ephemeral rather than entering the DB.
 
 ---
 
@@ -77,7 +78,8 @@ remain in persisted `source_config` but are redacted from operator API responses
 class Detector:
     key: str                 # unique id, e.g. "object", "face"
     def setup(self, config: dict) -> None: ...        # load model once
-    def process(self, frame) -> list[Detection]: ...  # per analyzed frame
+    def process(self, frame) -> list[Detection]: ...  # stateless/backward-compatible
+    def process_for_camera(self, camera_id, frame) -> list[Detection]: ... # stateful
     def teardown(self) -> None: ...
 ```
 
@@ -184,6 +186,11 @@ never crash the pipeline.
 
 - **Detection model / license (ADR-002):** swap the detector plugin or point it at a
   different ONNX model via config — no core change. This is how we escape AGPL if needed.
+  The object detector also accepts `imgsz` and `conf` config and a per-camera `camera_ids`
+  / `fps` scope, so a heavier detector can run slow on one camera without slowing others.
+- **Vision-language chat / enrichment (ADR-010):** an optional cloud VLM backs both the
+  "ask the camera" chat and the `vlm_watch` rule. It is config/env-driven (`GUARDLENS_
+  NVIDIA_API_KEY`, `GUARDLENS_VLM_MODEL`) and fully inert when unset — no core change.
 - **Face backend (ADR-003):** the default OpenCV backend is dependency-free and
   CPU-safe; a stronger InsightFace, `face_recognition`, or other backend can replace it
   while preserving the same `Detection.attributes` contract.

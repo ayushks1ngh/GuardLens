@@ -178,7 +178,7 @@ requirement.
 
 ## Proposed ADR-012 — Camera source adapters and browser publishers
 
-**Status:** Accepted. Phase A `OpenCvSource` and registry implemented; Phase B WebRTC adapter pending.
+**Status:** Accepted and implemented; see the outcome record below.
 
 **Context:** OpenCV pull sources cover local indexes, files, RTSP, and many HTTP/MJPEG
 URLs, but a phone/laptop browser publishes frames rather than exposing a pull URL.
@@ -226,3 +226,31 @@ pose recognition as full sign-language translation.
 **Consequences:** We can validate low-cost gesture infrastructure before selecting and
 training a real ASL/ISL vocabulary. Dynamic/two-hand/continuous signing remains a
 separate temporal-model project with its own dataset and measured acceptance gate.
+
+---
+
+## ADR-012 outcome — LAN-first WebRTC browser publishers
+
+**Status:** Accepted and implemented. `aiortc==1.15.0` is pinned. Browser publishers
+use permissioned `getUserMedia`, encrypted WebRTC media, short-lived single-use initial
+tokens, rotating reload credentials, QR/link pairing, revocation, and a push-source frame
+hub. Credentials are URL-fragment-only and stored hashed in memory. HTTPS is configurable
+and mandatory outside localhost. ICE has no public STUN/TURN by default: internet/NAT
+publishing remains intentionally out of scope until auth/TURN deployment is designed.
+
+## ADR-013 outcome — Recording as a separate clip service
+
+**Status:** Accepted and implemented, disabled by default. `ClipRecorder` owns bounded
+pre-roll, post-roll, segmentation, max duration, codec fallback, retention/quota,
+low-disk containment, partial-file recovery, and event clip references. MOG2 motion is an
+auto-discovered detector/rule with per-camera background state. Defaults are 5s pre-roll,
+10s post-roll, 120s max, 7-day retention, and 2 GiB quota.
+
+## ADR-014 outcome — Vocabulary-scoped gesture plugins
+
+**Status:** Foundation accepted and implemented; model accuracy gate pending. An optional
+MediaPipe Tasks detector emits 21 landmarks and structured hand attributes. Vocabulary
+plugins are independently discovered. `basic_gestures` is model-free infrastructure;
+`asl_static` loads an operator-supplied licensed ONNX classifier and is explicitly scoped
+to isolated static ASL fingerspelling (not J/Z dynamics, phrases, or translation).
+NARUTO remains reference-only, not a default feature. No model is downloaded implicitly.

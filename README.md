@@ -18,10 +18,12 @@ sampling, and daily reports. See [`docs/08-build-log.md`](docs/08-build-log.md) 
 evidence and [`docs/09-session-recovery.md`](docs/09-session-recovery.md) for the latest
 handoff.
 
-🚧 **Post-2.0 Improvement Phase A is implemented and awaiting hardware checks.** The
-Add Camera flow now supports typed host-device, file, RTSP, HTTP, and MJPEG sources via
-an extensible source registry with probe-first validation. Browser/WebRTC phone pairing
-is the next phase after a physical webcam/IP-camera check and duplicate-DB cleanup choice.
+🚧 **Post-2.0 Improvements A–F are implemented, with final physical/model gates pending.**
+Typed host/file/RTSP/HTTP/MJPEG sources, secure LAN-first browser/WebRTC pairing, motion
+and event/continuous clips, gesture vocabulary plugins, bounded static-ASL adapters,
+and release hardening are present. Automated suites and Docker validation pass; real
+multi-phone soak, enabled MediaPipe/model accuracy, and final operator checks remain.
+See [`docs/09-session-recovery.md`](docs/09-session-recovery.md) for exact gate status.
 
 ## Run
 
@@ -31,7 +33,9 @@ Local (creates/uses `.venv`):
 ```
 Then open <http://localhost:8080>. The default config uses CPU inference and the bundled
 sample can be added as `data/samples/mall_cctv.mp4`. YOLO weights download once on first
-analysis startup.
+analysis startup. For LAN browser-camera testing, generate explicit development TLS with
+`scripts/setup_dev_tls.sh <LAN-IP>` and trust the generated certificate on each device;
+use a real CA/reverse proxy for production.
 
 Docker:
 ```bash

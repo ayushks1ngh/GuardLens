@@ -54,6 +54,11 @@ class CameraManager:
             worker = self._workers.pop(camera_id, None)
         if worker:
             worker.stop()
+            try:
+                from guardlens.recording import clip_recorder
+                clip_recorder.stop_camera(camera_id)
+            except Exception:
+                logger.exception("failed to stop recorder for camera %s", camera_id)
             logger.info("stopped worker for camera %s", camera_id)
 
     def stop_all(self) -> None:
@@ -62,6 +67,11 @@ class CameraManager:
             self._workers.clear()
         for w in workers:
             w.stop()
+        try:
+            from guardlens.recording import clip_recorder
+            clip_recorder.stop_all()
+        except Exception:
+            logger.exception("failed to stop clip recorder")
 
     def get_worker(self, camera_id: int) -> Optional[CaptureWorker]:
         with self._lock:

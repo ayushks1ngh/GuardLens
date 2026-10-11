@@ -276,6 +276,17 @@ def delete_camera(camera_id: int):
         camera = session.get(Camera, camera_id)
         if not camera:
             raise HTTPException(404, "camera not found")
+        webrtc_stream = (
+            camera.source_config.get("stream_id")
+            if camera.source_type == "webrtc" else None
+        )
         session.delete(camera)
         session.commit()
+    if webrtc_stream:
+        try:
+            from guardlens.capture.webrtc import pairing_service
+            import asyncio
+            asyncio.run(pairing_service.revoke(webrtc_stream))
+        except Exception:
+            pass
     return {"status": "deleted", "id": camera_id}

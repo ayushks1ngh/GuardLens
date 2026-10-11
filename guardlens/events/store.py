@@ -80,6 +80,21 @@ class EventStore:
                     session.add(event)
                     session.commit()
                     session.refresh(event)
+                try:
+                    from guardlens.recording import clip_recorder
+                    clip_path = clip_recorder.link_event(
+                        camera_id, event.id, draft.type, frame=draft.snapshot
+                    )
+                    if clip_path:
+                        event.clip_path = clip_path
+                        with Session(get_engine()) as clip_session:
+                            stored = clip_session.get(Event, event.id)
+                            if stored:
+                                stored.clip_path = clip_path
+                                clip_session.add(stored)
+                                clip_session.commit()
+                except Exception:
+                    logger.exception("clip trigger failed; event remains persisted")
             except Exception:
                 if snapshot_path:
                     (self._snapshots_dir / snapshot_path).unlink(missing_ok=True)
@@ -95,9 +110,23 @@ class EventStore:
         return event
 
     def delete_evidence(self, event: Event) -> None:
-        for relative in (event.snapshot_path, event.clip_path):
-            if relative:
-                (self._snapshots_dir / Path(relative).name).unlink(missing_ok=True)
+        if event.snapshot_path:
+            (self._snapshots_dir / Path(event.snapshot_path).name).unlink(missing_ok=True)
+        if event.clip_path:
+            try:
+                from sqlalchemy import func
+                with Session(get_engine()) as session:
+                    references = session.exec(
+                        select(func.count(Event.id)).where(
+                            Event.clip_path == event.clip_path,
+                            Event.id != event.id,
+                        )
+                    ).one()
+                if references == 0:
+                    from guardlens.recording import clip_recorder
+                    (clip_recorder.clips_dir / Path(event.clip_path).name).unlink(missing_ok=True)
+            except Exception:
+                logger.exception("failed to delete clip evidence %s", event.clip_path)
 
 
 async def event_stream(last_sequence: int = 0):
