@@ -376,6 +376,15 @@ No commit was created because the user did not explicitly request one.
 - The cloud VLM transmits frames to the provider (documented, opt-in).
 - WSL USB webcam and NAT inbound both need manual host steps (usbipd attach; portproxy).
 
+**Live manual verification (this environment)**
+- Webcam (USB/IP over WSL usbipd), Mall sample, and a phone IP camera all streamed with
+  detection overlays.
+- Phone **browser/WebRTC pairing verified end to end**: dev TLS cert for the LAN IP,
+  `GUARDLENS_PUBLIC_URL`, a Windows `netsh portproxy` (LAN:9443 → WSL:9443) + firewall
+  rule, cert trusted on the phone, QR scanned, pairing token consumed, and a `webrtc`
+  camera created. (WebRTC frames flow only while the publisher page stays open.)
+- VLM "ask the camera" chat answered correctly per-selected-camera on webcam and phone.
+
 **Housekeeping**
 - Purged ~2,630 accumulated sample events/snapshots (1.4 GB → ~0) after DB backup;
   scoped the broad `person-watch` rule to a single camera to stop the flood.

@@ -14,7 +14,7 @@ memory of the previous conversation. Read this first; it tells you *where we are
 | Field | Value |
 |-------|-------|
 | **Last completed phase** | Improvements A–F + interactive hardening (VLM chat, phone IP cam, UI) ✅ |
-| **Next phase** | Finish browser/WebRTC phone test over HTTPS portproxy; optional custom detector |
+| **Next phase** | Accuracy/UX polish (see improvement list §8); optional custom detector |
 | **Working tree** | A–F + VLM/UI work on `main`, being committed; secrets gitignored |
 | **Tests** | 78/78 passing (47 baseline + 31 improvement) + live manual checks |
 | **Last updated** | 2026-10-11 |
@@ -167,3 +167,39 @@ Keep it short. The goal: a cold start should take minutes, not an archaeology di
    CPU, RSS, bandwidth, disk growth, reconnects, and cross-camera leakage observations.
 6. Choose duplicate DB cleanup: retain one (recommended), disable all, or remove all 17
    `Mall` rows. Backup: `data/backups/guardlens-before-camera-dedup-20261010-191921.db`.
+
+---
+
+## 8. Known limitations & improvement backlog (as of 2026-10-11)
+
+Honest list of what to improve next; none of these block current use.
+
+### Detection accuracy
+- Stock YOLOv8n = 80 COCO classes only. **Pen, purse, arbitrary "sharp objects" are
+  not labelable.** Options: (a) YOLO-World open-vocabulary detector plugin (prompt by
+  text, heavier CPU), (b) custom-trained YOLO on collected/labelled images (needs ~150–
+  300 images/class + a GPU/Colab run), run scoped at low FPS so it does not slow live.
+- Bigger stock models (m/l) are too heavy on this CPU (~250–400 ms/frame). Keep nano
+  live; reserve heavy/custom models for one camera at low analyze-FPS.
+
+### VLM chat
+- Depends on a cloud key and transmits frames out; free NVIDIA tier returns 503 under
+  load. Consider: a self-hosted VLM later, response caching, and showing the exact frame
+  that was analyzed next to each answer.
+
+### Reliability / ops
+- WSL USB webcam drops on sleep/restart → must re-run `usbipd attach --wsl --busid 2-7`.
+- WSL eth0 IP can change → the Windows portproxy `connectaddress` then needs updating.
+- Camera `enabled` state persists across restarts (a prior "off" stays off) — expected,
+  but surprised us twice; consider surfacing it clearly in the UI.
+- Phone IP-camera URL changes with DHCP; browser/WebRTC avoids that but needs HTTPS.
+
+### UI/UX ideas not yet built
+- Show vlm_alert snapshot + answer inline; "Explain this event" button (reuse VLM).
+- Per-camera analyze-FPS slider (backend already supports per-detector fps/scope).
+- Grid column control + single-camera focus; sound/visual alarm on critical events.
+- Auto-revoke/clean stale webrtc cameras whose publisher disconnected.
+
+### Testing still pending
+- Real motion/recording playback + low-disk/restart; enabled MediaPipe/ASL model with
+  signer-disjoint accuracy; extended multi-device soak.
