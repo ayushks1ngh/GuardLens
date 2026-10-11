@@ -61,6 +61,7 @@ Read these in order:
 | [`docs/08-build-log.md`](docs/08-build-log.md) | Running record of each phase: what was built, gate results, fixes |
 | [`docs/09-session-recovery.md`](docs/09-session-recovery.md) | **Start here when resuming** — current status and how to pick up where we left off |
 | [`docs/10-improvement-plan.md`](docs/10-improvement-plan.md) | Proposed multi-device camera, recording, and hand/sign roadmap |
+| [`docs/11-roadmap-ux-hosting-agents.md`](docs/11-roadmap-ux-hosting-agents.md) | Planning: UX overhaul, hosting (Vercel/tunnel), agent ideas, accuracy backlog |
 
 ## Quick principles
 
