@@ -267,7 +267,7 @@ class AgentRunner:
                 annotation = {**annotation, "created_at": utcnow().isoformat(), "mode": config.get("mode", "suggest")}
                 ctx.event_store.annotate(event["id"], key, annotation)
                 self._log(key, trigger, event_id, "ok", started, {
-                    k: annotation[k] for k in ("provider", "model", "verdict", "threat") if k in annotation})
+                    k: annotation[k] for k in ("provider", "model", "verdict", "threat", "repeat_of", "unusual") if k in annotation})
                 return {"status": "ok", "annotation": annotation}
             result = agent.run(ctx, trigger, payload) or {}
             self._log(key, trigger, event_id, "ok", started, result if isinstance(result, dict) else {})

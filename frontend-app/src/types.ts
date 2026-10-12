@@ -66,3 +66,29 @@ export interface CameraCount { camera_id: number; count: number }
 export interface AnalyticsSummary {
   total: number; by_type: Record<string, number>; by_severity: Record<string, number>; by_status: Record<string, number>;
 }
+
+/* ---- M1c: Live / Events / Cameras ---- */
+export interface CameraRuntime {
+  connected: boolean; fps: number; running: boolean; source_type?: string;
+  last_frame_age: number | null; error: string | null;
+}
+export interface CameraFull extends Camera {
+  source_config?: Record<string, unknown>; analyze_fps?: number | null; status?: CameraRuntime;
+}
+
+export type Severity = "info" | "warning" | "critical";
+export type EventStatus = "new" | "acknowledged" | "resolved";
+
+export interface EventNote { id: number; event_id: number; text: string; created_at: string }
+export interface EventRow {
+  id: number; type: string; severity: Severity | string; status: EventStatus | string; camera_id: number;
+  snapshot_path?: string | null; clip_path?: string | null;
+  event_metadata?: Record<string, unknown>; created_at: string;
+  acknowledged_at?: string | null; resolved_at?: string | null; notes?: EventNote[];
+}
+export interface EventPage { items: EventRow[]; total: number; limit: number; offset: number }
+
+export interface OverlayBox { class: string; conf: number; bbox: [number, number, number, number]; track_id?: number | null }
+export interface OverlayInfo {
+  counts?: Record<string, number>; boxes?: OverlayBox[]; alert?: boolean; connected?: boolean; fps?: number;
+}

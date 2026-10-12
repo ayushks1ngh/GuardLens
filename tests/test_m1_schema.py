@@ -91,3 +91,12 @@ def test_react_app_is_served_when_built():
         page = client.get("/app/")
         assert page.status_code == 200 and '<div id="root">' in page.text
         assert client.get("/").status_code == 200  # classic dashboard still served
+
+
+def test_person_patch_and_snapshot_errors():
+    with TestClient(app) as client:
+        person = client.post("/api/persons", json={"name": "Ana"}).json()
+        updated = client.patch(f"/api/persons/{person['id']}", json={"watchlist": True, "notes": "gate"})
+        assert updated.status_code == 200 and updated.json()["watchlist"] is True and updated.json()["name"] == "Ana"
+        assert client.patch("/api/persons/999999", json={"name": "x"}).status_code == 404
+        assert client.get("/api/cameras/999999/snapshot").status_code == 404

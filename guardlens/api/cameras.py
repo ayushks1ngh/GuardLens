@@ -206,6 +206,23 @@ def create_camera(body: CameraCreate):
     return {**_public_camera(camera), "status": _status_for(camera.id)}
 
 
+@router.get("/{camera_id}/snapshot")
+def camera_snapshot(camera_id: int):
+    """Latest frame as a single JPEG (for zone/line drawing backgrounds and previews)."""
+    import cv2
+    from fastapi.responses import Response
+    worker = manager.get_worker(camera_id)
+    if worker is None:
+        raise HTTPException(404, "camera is not running")
+    frame, _ = worker.get_latest()
+    if frame is None:
+        raise HTTPException(409, "no frame available from this camera yet")
+    ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    if not ok:
+        raise HTTPException(500, "could not encode frame")
+    return Response(buf.tobytes(), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
 @router.get("/{camera_id}")
 def get_camera(camera_id: int):
     with Session(get_engine()) as session:

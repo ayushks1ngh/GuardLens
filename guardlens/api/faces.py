@@ -23,6 +23,12 @@ class PersonCreate(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=1000)
 
 
+class PersonUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    watchlist: Optional[bool] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
+
+
 class CaptureBody(BaseModel):
     camera_id: int
 
@@ -81,6 +87,18 @@ def list_persons():
 def create_person(body: PersonCreate):
     with Session(get_engine()) as session:
         person = Person(**body.model_dump()); session.add(person); session.commit(); session.refresh(person); return person
+
+
+@router.patch("/persons/{person_id}")
+def update_person(person_id: int, body: PersonUpdate):
+    with Session(get_engine()) as session:
+        person = session.get(Person, person_id)
+        if not person:
+            raise HTTPException(404, "person not found")
+        for key, value in body.model_dump(exclude_unset=True).items():
+            setattr(person, key, value)
+        session.add(person); session.commit(); session.refresh(person)
+        return person
 
 
 @router.post("/persons/{person_id}/images", status_code=201)

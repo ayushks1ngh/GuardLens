@@ -5,6 +5,9 @@ import { FacesPage } from "./FacesPage";
 import { NotifiersPage } from "./NotifiersPage";
 import { RecordingPage } from "./RecordingPage";
 import { ReportsPage } from "./ReportsPage";
+import { CamerasPage } from "./CamerasPage";
+import { EventsPage } from "./EventsPage";
+import { LivePage } from "./LivePage";
 import { RulesPage } from "./RulesPage";
 import { ZonesPage } from "./ZonesPage";
 
@@ -12,6 +15,9 @@ export interface PageDef { key: string; label: string; component: ComponentType<
 
 /** Add a screen by appending one line here; App.tsx never needs to change. */
 export const PAGES: PageDef[] = [
+  { key: "live", label: "Live", component: LivePage },
+  { key: "events", label: "Events", component: EventsPage },
+  { key: "cameras", label: "Cameras", component: CamerasPage },
   { key: "rules", label: "Rules", component: RulesPage },
   { key: "zones", label: "Zones", component: ZonesPage },
   { key: "faces", label: "Faces", component: FacesPage },

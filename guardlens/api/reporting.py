@@ -19,8 +19,8 @@ def _bounds(day: date):
     return start, start + timedelta(days=1)
 
 
-def _generate(day: date, force: bool = False):
-    key = reporting_runtime.generator
+def _generate(day: date, force: bool = False, key: Optional[str] = None):
+    key = key or reporting_runtime.generator
     with Session(get_engine()) as session:
         cached = session.exec(select(Report).where(Report.date == day).order_by(Report.generated_at.desc())).first()
         if cached and not force: return cached
