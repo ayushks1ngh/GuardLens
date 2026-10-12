@@ -76,7 +76,6 @@ export interface CameraFull extends Camera {
   source_config?: Record<string, unknown>; analyze_fps?: number | null; status?: CameraRuntime;
 }
 
-export type Severity = "info" | "warning" | "critical";
 export type EventStatus = "new" | "acknowledged" | "resolved";
 
 export interface EventNote { id: number; event_id: number; text: string; created_at: string }
