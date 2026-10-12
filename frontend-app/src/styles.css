@@ -136,3 +136,20 @@ button.danger { color: var(--crit); border-color: var(--crit); }
 .qr { width: 180px; background: #fff; padding: 8px; border-radius: 8px; }
 .ok-text { color: var(--accent); }
 .advanced { margin: 12px 0; } .advanced summary { cursor: pointer; margin-bottom: 8px; }
+
+/* ---- M2/M3: Agents, Assistant, triage pills ---- */
+.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: 12px; border: 1px solid; }
+.pill-ok { color: var(--accent); } .pill-warn { color: var(--warn); } .pill-crit { color: var(--crit); }
+.agent-card h3, .agents-page h3 { margin: 0; } .agent-card h4 { margin: 12px 0 4px; font-size: 14px; }
+.row-inline.between { justify-content: space-between; align-items: center; } .row-inline.wrap, .actions.wrap { flex-wrap: wrap; }
+.agent-settings { margin: 12px 0; display: flex; flex-direction: column; gap: 12px; }
+.chat-log { min-height: 240px; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); }
+.bubble p { margin: 0; white-space: pre-wrap; }
+.bubble-user { align-self: flex-end; background: #1c2636; } .bubble-assistant { align-self: flex-start; background: #16202e; }
+.bubble-error { align-self: flex-start; border-color: var(--crit); }
+.chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.thumb { display: block; padding: 0; margin-top: 8px; border: 0; background: none; }
+.thumb img { display: block; max-width: 220px; max-height: 160px; border-radius: 8px; }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 50; padding: 16px; }
+.lightbox img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
