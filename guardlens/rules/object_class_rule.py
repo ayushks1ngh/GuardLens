@@ -43,6 +43,7 @@ class ObjectClassRule(Rule):
                 "classes": sorted({d.class_name for d in matched}),
                 "count": len(matched),
                 "track_ids": [d.track_id for d in matched if d.track_id is not None],
+                "boxes": [{"class": d.class_name, "bbox": [round(float(v), 4) for v in d.bbox]} for d in matched[:5]],
             },
             snapshot=ctx.frame,
         )

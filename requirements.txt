@@ -26,6 +26,14 @@ ultralytics==8.3.58
 aiortc==1.15.0
 qrcode==8.2
 
+# --- Footage search: CLIP embeddings on CPU (model downloads on first use; see docs/12) ---
+open_clip_torch==2.29.0
+timm==1.0.30
+ftfy==6.3.1
+regex==2026.9.29
+safetensors==0.8.0
+huggingface_hub==2.2.0
+
 # --- Vision-language chat (optional; direct use of requests) ---
 requests==2.34.2
 

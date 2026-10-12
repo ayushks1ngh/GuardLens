@@ -100,3 +100,13 @@ def test_person_patch_and_snapshot_errors():
         assert updated.status_code == 200 and updated.json()["watchlist"] is True and updated.json()["name"] == "Ana"
         assert client.patch("/api/persons/999999", json={"name": "x"}).status_code == 404
         assert client.get("/api/cameras/999999/snapshot").status_code == 404
+
+
+def test_object_class_events_carry_boxes_for_crop_indexing():
+    from guardlens.rules import RuleConfig, RuleEngine
+    from guardlens.types import Detection, FrameContext
+    frame = __import__("numpy").zeros((10, 10, 3), dtype="uint8")
+    ctx = FrameContext(camera_id=1, timestamp=1.0, frame_shape=(10, 10), detections=[
+        Detection("person", 0.9, (0.1, 0.2, 0.5, 0.9))], tracks={}, zones=[], frame=frame)
+    drafts = RuleEngine([RuleConfig(type="object_class", cooldown_seconds=0, params={"classes": ["person"]})]).evaluate(ctx)
+    assert drafts[0].metadata["boxes"] == [{"class": "person", "bbox": [0.1, 0.2, 0.5, 0.9]}]

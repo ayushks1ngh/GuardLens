@@ -189,7 +189,11 @@ class AnalysisManager:
                 "device": config.device,
                 **entry,
             }
-            detectors.append(create_detector(key, merged))
+            try:
+                detectors.append(create_detector(key, merged))
+            except Exception:
+                # One broken/misconfigured plugin must never take the whole pipeline down.
+                logger.exception("detector %r failed to set up; continuing without it", key)
         self._detectors = detectors
         self._analyze_fps = config.analyze_fps
 

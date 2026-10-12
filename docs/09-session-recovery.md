@@ -13,10 +13,10 @@ memory of the previous conversation. Read this first; it tells you *where we are
 
 | Field | Value |
 |-------|-------|
-| **Last completed phase** | Improvements A–F + interactive hardening (VLM chat, phone IP cam, UI) ✅ |
-| **Next phase** | docs/13 roadmap: finish M1c screens (Live, Events, Cameras, Zones, Faces, Notifiers, Recording, Reports) in `frontend-app/`, then M2 agent foundation |
+| **Last completed phase** | docs/13 roadmap M1–M6 built and verified end-to-end (see docs/08 tail) ✅ |
+| **Next phase** | Operator review in a real browser; physical gates (docs/09 checklist); optional YOLO-World detector; eval triage on real labelled alerts before enabling any suppression |
 | **Working tree** | A–F + VLM/UI work on `main`, being committed; secrets gitignored |
-| **Tests** | 86 pytest + 5 vitest passing |
+| **Tests** | ~145 pytest + frontend vitest; `python scripts/e2e_smoke.py` for the real-server walkthrough |
 | **Last updated** | 2026-10-13 |
 
 **One-line resume:** server runs via `./scripts/testing_server.sh` (reads gitignored

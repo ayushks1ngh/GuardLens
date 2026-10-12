@@ -421,3 +421,52 @@ and smoke-tested on a temp server (`/app/`, `/api/meta`, `/api/rules/types`).
 
 **Remaining M1c:** Live grid/focus, Events (inline snapshot/clip, filters), Cameras wizard,
 zones on camera frame, Faces, Notifiers, Recording, Reports; parity checklist → switch `/`.
+
+---
+
+## Roadmap docs/13 — M1c, M2–M6 built (2026-10-12/13)
+
+**M1c — React screens** (`frontend-app/`, served at `/app/`): Live (grid, focus, fullscreen,
+analyze-FPS, self-heal, critical highlight), Events (filter chips, evidence, notes, SSE, alarm,
+AI notes, incident report), Cameras wizard + pairing, Rules (schema forms, plain-words drafting,
+preview), Zones (draw on camera snapshot), Faces, Notifications (+ quiet hours), Recording,
+Reports + charts, Agents + AI connection + privacy, Ask GuardLens chat, Find footage, Security
+(login, tokens), Health (+ "needs attention"). Built by parallel worktree agents and merged;
+page registry (`pages/registry.ts`) means a screen is one file + one line.
+Backend gaps closed on the way: `GET /api/cameras/{id}/snapshot`, `PATCH /api/persons/{id}`,
+live `analyze_fps` apply, **SSE no longer replays history on connect** (it re-sounded old
+critical alarms), event metadata now carries normalized `boxes`.
+
+**M2 — agent foundation:** `guardlens/vlm_client.py` (single AI client: NVIDIA/Gemini/OpenRouter
+free tiers + local Ollama, fallback chain, per-minute/day/camera budgets, circuit breaker, cache,
+per-camera "local only"); `guardlens/agents/` (auto-discovered plugins, suggest-only, hourly
+budgets, `AgentRun` audit log, `param_schema` → generated forms); `EventStore.add_listener/
+annotate` + named SSE `event_updated`; `guardlens/scheduler.py` (retention, nightly report,
+agent schedules); `/api/agents`, `/api/privacy`.
+
+**M3 — agents:** event triage (structured verdict, untrusted-scene system prompt, fail-open,
+escalate-only *suggestion*), daily briefing (citation-grounded, invented ids stripped, private
+cameras excluded, falls back to the structured report), repeats + unusual-hour-of-week flags
+(no AI), Ask GuardLens chat (retrieval in code, memory, live frames, analysed frame saved),
+`scripts/eval_triage.py` + `evaluation.py` (false-alarm reduction and missed-real rate;
+suppression stays off until ≤1% over ≥50 real alerts).
+
+**M4 — search:** `guardlens/search/` OpenCLIP ViT-B/32 (CPU) embeddings of snapshots + object
+crops stored in SQLite, hybrid picture + caption query, find-similar. Off until enabled.
+
+**M5 — auth:** scrypt passwords, HttpOnly SameSite cookie sessions, hashed API tokens, login
+rate limit, middleware protecting API/streams/snapshots, `GUARDLENS_AUTH_DISABLE=1` recovery,
+`docs/14-remote-access.md`. Fixed on the way: naive/aware datetime compare found by tests.
+
+**M6:** natural-language rule drafting with validation + **dry-run replay over stored activity**
+(never saves), quiet-hours notification routing, incident-report drafts, `/api/health/issues`.
+Fixed on the way: `dispatcher.reload()` edit bug caught by tests.
+
+**Verification:** 145 pytest; frontend vitest + tsc + build per branch; and
+`scripts/e2e_smoke.py` against a real server (real YOLOv8n on the sample video → events →
+evidence → agents degrade without a key → real CLIP search → login). It caught two real gaps
+(object_class events lacked boxes; a wrong endpoint in the script itself).
+
+**Not done / deliberately deferred:** response playbooks (actions need hardware + human-confirm
+design; agents stay suggest-only), cross-camera re-ID, YOLO-World/YOLOE open-vocabulary detector
+(needs the `clip` package + weights; tracked in docs/13), physical-hardware gates from docs/09.

@@ -25,6 +25,14 @@ and release hardening are present. Automated suites and Docker validation pass; 
 multi-phone soak, enabled MediaPipe/model accuracy, and final operator checks remain.
 See [`docs/09-session-recovery.md`](docs/09-session-recovery.md) for exact gate status.
 
+🆕 **Post-2.0 roadmap (docs/13) is built:** new React dashboard at `/app/` (no raw JSON anywhere),
+AI agents (alert triage, daily briefing, repeats/unusual hours, rule-drafting helper, Ask GuardLens
+chat) on free-tier providers with budgets and per-camera "keep on device", footage search,
+login + API tokens, quiet-hours routing, incident-report drafts. Agents are suggest-only.
+See [`docs/12`](docs/12-agents-research.md), [`docs/13`](docs/13-build-roadmap.md),
+[`docs/14`](docs/14-remote-access.md). Set `GUARDLENS_NVIDIA_API_KEY` (and/or
+`GUARDLENS_GEMINI_API_KEY`, `GUARDLENS_OPENROUTER_API_KEY`, `GUARDLENS_OLLAMA_URL`) to enable AI features.
+
 ## Run
 
 Local (creates/uses `.venv`):
@@ -64,6 +72,7 @@ Read these in order:
 | [`docs/11-roadmap-ux-hosting-agents.md`](docs/11-roadmap-ux-hosting-agents.md) | Planning: UX overhaul, hosting (Vercel/tunnel), agent ideas, accuracy backlog |
 | [`docs/12-agents-research.md`](docs/12-agents-research.md) | Research: market agent patterns, models/costs, agent catalogue + architecture |
 | [`docs/13-build-roadmap.md`](docs/13-build-roadmap.md) | Post-2.0 build plan M1–M6 with acceptance gates |
+| [`docs/14-remote-access.md`](docs/14-remote-access.md) | Login, API tokens, Tailscale / Cloudflare Tunnel |
 
 ## Quick principles
 
