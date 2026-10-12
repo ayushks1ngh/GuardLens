@@ -212,6 +212,12 @@ def create_app() -> FastAPI:
             return HTMLResponse(page.read_text(encoding="utf-8"))
         return HTMLResponse("<h1>Publisher not found.</h1>", status_code=404)
 
+    @app.get("/api/health/issues")
+    async def health_issues():
+        from guardlens.healthcheck import collect_issues
+        cfg = state.get("config")
+        return await __import__("asyncio").to_thread(collect_issues, Path(cfg.data_dir if cfg else "data"))
+
     @app.get("/healthz")
     async def healthz():
         return {"status": "ok"}

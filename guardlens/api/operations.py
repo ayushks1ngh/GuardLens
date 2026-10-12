@@ -51,6 +51,33 @@ def _public_notifier(row: NotifierConfig) -> dict:
     }
 
 
+class RoutingBody(BaseModel):
+    values: dict[str, Any]
+
+
+@router.get("/notifiers/routing")
+def get_routing():
+    from guardlens.notifiers import ROUTING_SCHEMA
+    from guardlens.schema import normalize_schema
+    return {"fields": normalize_schema(ROUTING_SCHEMA), "values": dispatcher.routing()}
+
+
+@router.put("/notifiers/routing")
+def put_routing(body: RoutingBody):
+    from guardlens.events import Setting
+    from guardlens.notifiers import ROUTING_SCHEMA
+    problems = validate_values(ROUTING_SCHEMA, body.values)
+    if problems:
+        raise HTTPException(422, error_detail(problems))
+    merged = {**dispatcher.routing(), **body.values}
+    with Session(get_engine()) as session:
+        row = session.get(Setting, "notification_routing") or Setting(key="notification_routing")
+        row.value = merged
+        session.add(row); session.commit()
+    dispatcher.reload()
+    return {"values": dispatcher.routing()}
+
+
 @router.get("/notifiers")
 def list_notifiers():
     with Session(get_engine()) as session:

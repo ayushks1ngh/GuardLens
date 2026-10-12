@@ -96,6 +96,15 @@ def get_event_clip(event_id: int):
         return FileResponse(path, media_type=media_type, filename=path.name)
 
 
+@router.get("/{event_id}/incident-report")
+def incident_report(event_id: int, ai: bool = False, window_minutes: int = Query(15, ge=1, le=240)):
+    from guardlens.incident import build_incident
+    report = build_incident(event_id, window_minutes, ai)
+    if report is None:
+        raise HTTPException(404, "event not found")
+    return report
+
+
 @router.get("/{event_id}")
 def get_event(event_id: int):
     with Session(get_engine()) as session:

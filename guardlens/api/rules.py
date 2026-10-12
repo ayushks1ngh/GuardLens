@@ -126,6 +126,49 @@ def list_rule_types():
     return rule_types()
 
 
+class ProposeBody(BaseModel):
+    text: str = Field(min_length=5, max_length=500)
+
+
+class PreviewBody(BaseModel):
+    type: str
+    camera_id: Optional[int] = None
+    zone_id: Optional[int] = None
+    cooldown_seconds: float = Field(default=30, ge=0)
+    params: dict[str, Any] = Field(default_factory=dict)
+    hours: float = Field(default=72, ge=1, le=720)
+
+
+@router.post("/api/rules/propose")
+def propose_rule(body: ProposeBody):
+    """Draft a rule from plain language. Nothing is saved; confirm by POSTing it to /api/rules."""
+    from guardlens.agents import agent_runner
+    outcome = agent_runner.run_now("rule_setup", "on_demand", {"text": body.text})
+    if outcome["status"] == "unavailable":
+        raise HTTPException(503, f"The AI helper is not available: {outcome.get('reason', 'no provider')}")
+    if outcome["status"] == "disabled":
+        raise HTTPException(409, "The rule setup helper is turned off. Turn it on in Agents.")
+    if outcome["status"] == "budget":
+        raise HTTPException(429, "The AI helper has reached its hourly limit.")
+    if outcome["status"] != "ok":
+        raise HTTPException(502, "The AI helper failed. Try again.")
+    result = outcome["result"]
+    if "error" in result:
+        raise HTTPException(422, result["error"])
+    return result
+
+
+@router.post("/api/rules/preview")
+def preview_rule(body: PreviewBody):
+    """How often would this rule have fired over the last N hours of stored activity?"""
+    from guardlens import rulesetup
+    rule_class = get_rule_class(body.type)
+    if rule_class is None:
+        raise HTTPException(422, f"unknown rule type: {body.type}")
+    _check_params(rule_class, body.params)
+    return rulesetup.dry_run(body.model_dump(exclude={"hours"}), body.hours)
+
+
 @router.get("/api/rules")
 def list_rules(camera_id: Optional[int] = None):
     with Session(get_engine()) as session:

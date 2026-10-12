@@ -44,17 +44,37 @@ def notifier_types():
     ]
 
 
+ROUTING_SCHEMA = {
+    "quiet_enabled": {"type": "boolean", "default": False, "label": "Quiet hours",
+                      "help": "During quiet hours only serious alerts are sent out; everything is still recorded."},
+    "quiet_start": {"type": "HH:MM", "default": "23:00", "label": "Quiet hours start"},
+    "quiet_end": {"type": "HH:MM", "default": "07:00", "label": "Quiet hours end"},
+    "quiet_min_severity": {"type": "enum", "default": "critical", "label": "Still send alerts that are",
+                           "enum": [{"value": "warning", "label": "Warning or higher"},
+                                    {"value": "critical", "label": "Critical only"}]},
+}
+
+
+def in_quiet_hours(routing: dict, now_hhmm: str) -> bool:
+    if not routing.get("quiet_enabled"):
+        return False
+    start, end = routing.get("quiet_start", "23:00"), routing.get("quiet_end", "07:00")
+    return (now_hhmm >= start or now_hhmm < end) if start > end else (start <= now_hhmm < end)
+
+
 class NotifierDispatcher:
     def __init__(self):
         self._entries = []
+        self._routing: dict = {}
         self._lock = threading.Lock()
         self._pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="notify")
 
     def reload(self):
         from sqlmodel import Session, select
-        from guardlens.events import NotifierConfig, get_engine
+        from guardlens.events import NotifierConfig, Setting, get_engine
         with Session(get_engine()) as session:
             rows = session.exec(select(NotifierConfig).where(NotifierConfig.enabled == True)).all()  # noqa: E712
+            routing_row = session.get(Setting, "notification_routing")
         entries = []
         for row in rows:
             cls = get_notifier_class(row.type)
@@ -66,11 +86,22 @@ class NotifierDispatcher:
                 entries.append((row.id, row.min_severity, instance))
             except Exception:
                 logger.exception("notifier %s configuration is invalid; skipping", row.id)
-        with self._lock: self._entries = entries
+        with self._lock:
+            self._entries = entries
+            self._routing = dict((routing_row.value or {}) if routing_row else {})
+
+    def routing(self) -> dict:
+        defaults = {k: v["default"] for k, v in ROUTING_SCHEMA.items()}
+        return {**defaults, **self._routing}
 
     def dispatch(self, event: dict):
+        from datetime import datetime
         levels = {"info": 0, "warning": 1, "critical": 2}
         with self._lock: entries = list(self._entries)
+        if in_quiet_hours(self.routing(), datetime.now().strftime("%H:%M")) and \
+                levels.get(event.get("severity", "warning"), 1) < levels.get(self.routing()["quiet_min_severity"], 2):
+            logger.info("quiet hours: not sending %s alert", event.get("type"))
+            return []
         futures = []
         for notifier_id, minimum, notifier in entries:
             if levels.get(event.get("severity", "warning"), 1) < levels.get(minimum, 1): continue

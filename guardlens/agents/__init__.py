@@ -71,6 +71,7 @@ class Agent:
     param_schema: dict = {}
     triggers: tuple[str, ...] = ("event",)     # any of: event, schedule, on_demand
     requires_vlm: bool = False
+    default_enabled: bool = False
 
     def setup(self, params: dict) -> None:
         """Called whenever the agent's settings change."""
@@ -107,6 +108,7 @@ def get_agent_class(key: str) -> Optional[type[Agent]]:
 
 def schema_for(cls: type[Agent]) -> dict:
     schema = dict(COMMON_SCHEMA)
+    schema["enabled"] = {**COMMON_SCHEMA["enabled"], "default": cls.default_enabled}
     if "event" in cls.triggers:
         schema.update(EVENT_SCHEMA)
     if "schedule" in cls.triggers:
@@ -299,9 +301,11 @@ class AgentRunner:
     def run_now(self, key: str, trigger: str = "on_demand", payload: Optional[dict] = None) -> dict:
         if key not in self._agents:
             raise KeyError(key)
-        if trigger == "on_demand" and "on_demand" not in self._agents[key].triggers \
-                and "schedule" not in self._agents[key].triggers:
+        agent = self._agents[key]
+        if trigger == "on_demand" and "on_demand" not in agent.triggers and "schedule" not in agent.triggers:
             return {"status": "skipped", "reason": "this agent does not run on demand"}
+        if trigger == "on_demand" and agent.triggers == ("on_demand",) and not self._configs[key].get("enabled"):
+            return {"status": "disabled", "reason": "turn this helper on in Agents first"}
         return self._execute(key, trigger, None, payload)
 
     def runs(self, key: Optional[str] = None, limit: int = 50) -> list[AgentRun]:
