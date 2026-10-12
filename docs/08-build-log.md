@@ -467,6 +467,11 @@ Fixed on the way: `dispatcher.reload()` edit bug caught by tests.
 evidence → agents degrade without a key → real CLIP search → login). It caught two real gaps
 (object_class events lacked boxes; a wrong endpoint in the script itself).
 
+**Also verified for real:** the open-vocabulary detector (YOLO-World, `open_vocab`) loads in ~5 s and runs
+~0.1 s/frame on CPU on a real mall frame (needs the optional CLIP package, see requirements.txt). The full
+end-to-end script passes 48/48 with live NVIDIA AI (triage parsed, chat with analysed frame, drafted a valid
+crowd rule without saving, citation-grounded briefing) and real CLIP search (model is ~600 MB).
+
 **Not done / deliberately deferred:** response playbooks (actions need hardware + human-confirm
 design; agents stay suggest-only), cross-camera re-ID, YOLO-World/YOLOE open-vocabulary detector
 (needs the `clip` package + weights; tracked in docs/13), physical-hardware gates from docs/09.
