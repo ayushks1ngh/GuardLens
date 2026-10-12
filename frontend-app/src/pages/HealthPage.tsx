@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { HealthIssues } from "../components/HealthIssues";
 import type { Camera, Meta } from "../types";
 
 interface CameraStatus {
@@ -61,6 +62,7 @@ export function HealthPage({ meta }: { meta: Meta | null }) {
         })}
         {!cameras.length && <li className="hint">No cameras added yet.</li>}
       </ul>
+      <HealthIssues />
     </section>
   );
 }
