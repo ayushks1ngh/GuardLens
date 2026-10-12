@@ -224,6 +224,7 @@ class VlmClient:
                 "providers": [
                     {
                         "name": p.name, "label": p.label or p.name, "model": p.model(), "local": p.local,
+                        "key_env": p.url_env or p.key_env,
                         "configured": p.available,
                         "paused": self._breakers[p.name].open_until > now,
                     }

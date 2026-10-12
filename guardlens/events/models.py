@@ -132,6 +132,32 @@ class EventEmbedding(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True)
+    password_hash: str
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class AuthSession(SQLModel, table=True):
+    """Browser login session; only a hash of the cookie token is stored."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    token_hash: str = Field(index=True, unique=True)
+    user_id: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime
+
+
+class ApiToken(SQLModel, table=True):
+    """Long-lived bearer token for scripts; only a hash is stored (shown once at creation)."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    token_hash: str = Field(index=True, unique=True)
+    user_id: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=utcnow)
+    last_used_at: Optional[datetime] = None
+
+
 class AgentRun(SQLModel, table=True):
     """Audit log: every agent execution, whether it annotated, skipped, or failed."""
     __table_args__ = (Index("ix_agentrun_agent_started", "agent_key", "started_at"),)

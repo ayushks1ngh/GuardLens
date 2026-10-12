@@ -11,7 +11,7 @@ import platform
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -75,6 +75,8 @@ async def lifespan(app: FastAPI):
     from guardlens.scheduler import scheduler
     from guardlens.vlm_client import vlm_client
     vlm_client.configure(cfg.vlm)
+    from guardlens import auth as _auth
+    _auth.auth_state.load()
     load_privacy()
     agent_runner.reload()
     _event_store.add_listener(agent_runner.on_event)
@@ -140,6 +142,19 @@ def create_app() -> FastAPI:
             expose_headers=["Last-Event-ID"],
         )
 
+    from fastapi.responses import JSONResponse
+
+    from guardlens import auth as _auth
+
+    @app.middleware("http")
+    async def require_login(request, call_next):
+        if _auth.auth_state.enabled and not _auth.is_public(request.url.path, request.method):
+            user = await __import__("asyncio").to_thread(_auth.authenticate, request.headers, request.cookies)
+            if user is None:
+                return JSONResponse({"detail": "login required"}, status_code=401)
+            request.state.user = user
+        return await call_next(request)
+
     @app.middleware("http")
     async def security_headers(request, call_next):
         response = await call_next(request)
@@ -160,6 +175,7 @@ def create_app() -> FastAPI:
     # Routers
     from guardlens.api.agents import router as agents_router
     from guardlens.api.assistant import router as assistant_router
+    from guardlens.api.auth import router as auth_router
     from guardlens.api.cameras import router as cameras_router
     from guardlens.api.events import router as events_router
     from guardlens.api.faces import router as faces_router
@@ -173,6 +189,7 @@ def create_app() -> FastAPI:
     from guardlens.api.stream import router as stream_router
     from guardlens.api.vision import router as vision_router
 
+    app.include_router(auth_router)
     app.include_router(agents_router)
     app.include_router(assistant_router)
     app.include_router(privacy_router)
@@ -195,9 +212,16 @@ def create_app() -> FastAPI:
             return HTMLResponse(page.read_text(encoding="utf-8"))
         return HTMLResponse("<h1>Publisher not found.</h1>", status_code=404)
 
+    @app.get("/healthz")
+    async def healthz():
+        return {"status": "ok"}
+
     @app.get("/health")
-    async def health():
+    async def health(request: Request):
         cfg = state.get("config")
+        if _auth.auth_state.enabled and await __import__("asyncio").to_thread(
+                _auth.authenticate, request.headers, request.cookies) is None:
+            return {"status": "ok"}  # no camera details for signed-out callers
         return {
             "status": "ok",
             "version": __version__,
