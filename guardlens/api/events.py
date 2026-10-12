@@ -12,7 +12,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from guardlens.events import Event, EventNote, get_engine, utcnow
-from guardlens.events.store import event_store, event_stream
+from guardlens.events.store import event_bus, event_store, event_stream
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
@@ -72,10 +72,13 @@ def list_events(
 
 @router.get("/stream")
 async def stream_events(last_event_id: Optional[str] = Header(default=None)):
+    # A fresh connection only sees *new* events; EventSource sends Last-Event-ID on its own
+    # reconnects, which is what triggers replay of anything missed. Without this a page load
+    # replayed up to 500 old events (and re-sounded every old critical alarm).
     try:
-        last = int(last_event_id or 0)
+        last = int(last_event_id) if last_event_id is not None else event_bus.latest_sequence()
     except ValueError:
-        last = 0
+        last = event_bus.latest_sequence()
     return StreamingResponse(event_stream(last), media_type="text/event-stream")
 
 

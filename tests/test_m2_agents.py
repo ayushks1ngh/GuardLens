@@ -240,3 +240,21 @@ def test_privacy_api_persists_local_only_cameras():
         assert vlm_client.local_only() == [camera_id]
         client.put("/api/privacy", json={"local_only_cameras": []})
         assert client.get("/api/privacy").json()["local_only_cameras"] == []
+
+
+def test_new_event_stream_does_not_replay_history():
+    import asyncio
+    from guardlens.events.store import event_stream
+    with TestClient(app):
+        event_store.persist(_camera(), EventDraft(type="m2_old", severity="critical"))
+        assert event_bus.latest_sequence() >= 1
+
+        async def first_chunk(last):
+            gen = event_stream(last)
+            try:
+                return await asyncio.wait_for(gen.__anext__(), 2)
+            finally:
+                await gen.aclose()
+
+        assert asyncio.run(first_chunk(event_bus.latest_sequence())).startswith(": heartbeat")
+        assert "m2_old" in asyncio.run(first_chunk(event_bus.latest_sequence() - 1))  # explicit Last-Event-ID still replays

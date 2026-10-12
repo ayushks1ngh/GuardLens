@@ -272,7 +272,7 @@ def update_camera(camera_id: int, body: CameraUpdate):
             analysis_manager.stop_camera(camera_id)
         except Exception:
             pass
-    elif source_changed or "enabled" in changes:
+    elif source_changed or "enabled" in changes or "analyze_fps" in changes:
         _start_runtime(camera)
     return {**_public_camera(camera), "status": _status_for(camera_id)}
 

@@ -32,6 +32,10 @@ class EventBus:
             self._sequence += 1
             self._items.append({"sequence": self._sequence, **payload})
 
+    def latest_sequence(self) -> int:
+        with self._lock:
+            return self._sequence
+
     def after(self, sequence: int) -> list[dict]:
         with self._lock:
             return [dict(item) for item in self._items if item["sequence"] > sequence]
