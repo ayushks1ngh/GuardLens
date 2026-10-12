@@ -16,6 +16,7 @@ describe("ZonesPage", () => {
       return Response.json({ id: 1 }, { status: 201 });
     }));
     render(<ZonesPage meta={null} />);
+    await screen.findByText("No zones for this camera yet.", {}, { timeout: 5000 }); // zones loaded; the editor won't be reset
     fireEvent.click(await screen.findByText("Draw a new zone", {}, { timeout: 5000 }));
     fireEvent.change(screen.getByLabelText("Zone name"), { target: { value: "Porch" } });
     const surface = screen.getByRole("img", { name: "Click to place points" });
