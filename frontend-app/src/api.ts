@@ -25,6 +25,10 @@ function describe(detail: unknown): { message: string; fields: FieldError[] } {
   return { message: "Something went wrong", fields: [] };
 }
 
+/** Fired when a call comes back 401 so the app can show the login screen. */
+export const UNAUTHORIZED_EVENT = "guardlens:unauthorized";
+const AUTH_FORM_PATHS = ["/api/auth/login", "/api/auth/setup", "/api/auth/password"];
+
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, ...rest } = init;
   const response = await fetch(API_BASE + path, {
@@ -35,6 +39,7 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   if (!response.ok) {
     let detail: unknown = response.statusText;
     try { detail = (await response.json()).detail ?? detail; } catch { /* non-JSON error body */ }
+    if (response.status === 401 && !AUTH_FORM_PATHS.includes(path)) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     const { message, fields } = describe(detail);
     throw new ApiError(message, response.status, fields);
   }

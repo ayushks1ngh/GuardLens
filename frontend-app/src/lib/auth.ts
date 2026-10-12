@@ -1,0 +1,29 @@
+export interface AuthStatus { enabled: boolean; needs_setup: boolean; authenticated: boolean; username: string | null }
+export interface ApiToken { id: number; name: string; created_at: string; last_used_at: string | null }
+export type Screen = "loading" | "setup" | "login" | "app";
+
+export function screenFor(s: AuthStatus | null): Screen {
+  if (!s) return "loading";
+  if (s.needs_setup) return "setup";
+  if (s.enabled && !s.authenticated) return "login";
+  return "app";
+}
+
+/** Returns a plain-language problem with the username/password, or null when fine. */
+export function credentialProblem(username: string, password: string): string | null {
+  if (username.trim().length < 3 || username.trim().length > 40) return "The username must be 3 to 40 characters.";
+  if (password.length < 10) return "The password must be at least 10 characters.";
+  return null;
+}
+
+export function tokenUsedText(t: ApiToken): string {
+  return t.last_used_at ? `Last used ${new Date(t.last_used_at).toLocaleString()}` : "Never used";
+}
+
+export function bearerExample(token: string): string { return `Authorization: Bearer ${token}`; }
+
+export function loginErrorText(status: number | undefined, message?: string): string {
+  if (status === 401) return "That username or password is not right.";
+  if (status === 429) return "Too many attempts. Wait a few minutes and try again.";
+  return message || "Could not sign in. Check that GuardLens is running.";
+}

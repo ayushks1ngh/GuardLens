@@ -12,6 +12,8 @@ import { RulesPage } from "./RulesPage";
 import { ZonesPage } from "./ZonesPage";
 import { AgentsPage } from "./AgentsPage";
 import { AssistantPage } from "./AssistantPage";
+import { SearchPage } from "./SearchPage";
+import { SecurityPage } from "./SecurityPage";
 
 export interface PageDef { key: string; label: string; component: ComponentType<{ meta: Meta | null }> }
 
@@ -27,6 +29,8 @@ export const PAGES: PageDef[] = [
   { key: "recording", label: "Recording", component: RecordingPage },
   { key: "reports", label: "Reports", component: ReportsPage },
   { key: "assistant", label: "Ask GuardLens", component: AssistantPage },
+  { key: "search", label: "Find footage", component: SearchPage },
   { key: "agents", label: "Agents", component: AgentsPage },
+  { key: "security", label: "Security", component: SecurityPage },
   { key: "health", label: "Health", component: HealthPage },
 ];

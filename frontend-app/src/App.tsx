@@ -1,9 +1,34 @@
-import { useEffect, useState } from "react";
-import { api } from "./api";
+import { useCallback, useEffect, useState } from "react";
+import { api, UNAUTHORIZED_EVENT } from "./api";
+import { AuthScreen } from "./components/AuthScreens";
+import { screenFor, type AuthStatus } from "./lib/auth";
 import { PAGES } from "./pages/registry";
 import type { Meta } from "./types";
+import "./styles-search-auth.css";
 
 export function App() {
+  const [auth, setAuth] = useState<AuthStatus | null>(null);
+  const [authError, setAuthError] = useState(false);
+  const loadAuth = useCallback(() => {
+    setAuthError(false);
+    api<AuthStatus>("/api/auth/status").then(setAuth).catch(() => setAuthError(true));
+  }, []);
+  useEffect(() => { loadAuth(); }, [loadAuth]);
+  useEffect(() => {
+    // Any later 401 means the session ended: show the login screen again.
+    const bounce = () => setAuth((a) => (a ? { ...a, enabled: true, authenticated: false } : a));
+    window.addEventListener(UNAUTHORIZED_EVENT, bounce);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, bounce);
+  }, []);
+
+  const screen = screenFor(auth);
+  if (authError) return <div className="auth-screen"><div className="card auth-card"><p className="error" role="alert">Could not reach GuardLens.</p><button type="button" onClick={loadAuth}>Try again</button></div></div>;
+  if (screen === "loading") return <div className="auth-screen" role="status">Loading…</div>;
+  if (screen === "setup" || screen === "login") return <AuthScreen mode={screen} onDone={loadAuth} />;
+  return <Dashboard auth={auth!} onSignedOut={loadAuth} />;
+}
+
+function Dashboard({ auth, onSignedOut }: { auth: AuthStatus; onSignedOut: () => void }) {
   const [page, setPage] = useState(PAGES[0].key);
   const [meta, setMeta] = useState<Meta | null>(null);
   useEffect(() => { api<Meta>("/api/meta").then(setMeta).catch(() => setMeta(null)); }, []);
@@ -12,6 +37,7 @@ export function App() {
     window.addEventListener("guardlens:navigate", go);
     return () => window.removeEventListener("guardlens:navigate", go);
   }, []);
+  const signOut = async () => { await api("/api/auth/logout", { method: "POST" }).catch(() => undefined); onSignedOut(); };
   const Page = PAGES.find((p) => p.key === page)?.component ?? PAGES[0].component;
   return (
     <div className="shell">
@@ -22,6 +48,7 @@ export function App() {
             {p.label}
           </button>
         ))}
+        {auth.enabled && <button type="button" className="signout" onClick={signOut}>Sign out{auth.username ? ` (${auth.username})` : ""}</button>}
         <a className="legacy" href="/">Classic dashboard</a>
       </nav>
       <main><Page meta={meta} /></main>
