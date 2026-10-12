@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 
 from guardlens.events import Event, NotifierConfig, get_engine
 from guardlens.notifiers import dispatcher, get_notifier_class, notifier_types
+from guardlens.schema import error_detail, validate_values
 
 router = APIRouter(prefix="/api", tags=["notifiers", "analytics"])
 
@@ -60,6 +61,9 @@ def _validate_notifier(type_: str, config: dict) -> None:
     cls = get_notifier_class(type_)
     if not cls:
         raise HTTPException(422, "unknown notifier type")
+    problems = validate_values(cls.config_schema, config)
+    if problems:
+        raise HTTPException(422, error_detail(problems))
     try:
         instance = cls()
         instance.setup(config)

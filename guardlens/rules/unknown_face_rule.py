@@ -9,7 +9,10 @@ from guardlens.types import EventDraft
 @register_rule
 class UnknownFaceRule(Rule):
     key = "unknown_face"
-    param_schema = {"policy": {"type": "enum", "values": ["label_only", "alert_unknown", "alert_watchlist"]}}
+    param_schema = {"policy": {"type": "enum", "label": "When to alert", "help": "Overrides the global face policy for this rule.", "enum": [
+        {"value": "label_only", "label": "Never (just label faces)"},
+        {"value": "alert_unknown", "label": "Unknown faces"},
+        {"value": "alert_watchlist", "label": "Watchlisted people"}]}}
 
     def evaluate(self, ctx, cfg):
         policy = cfg.params.get("policy") or face_runtime.policy()

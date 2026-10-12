@@ -9,6 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
 
+from guardlens.schema import normalize_schema
+
 logger = logging.getLogger("guardlens.notifiers")
 
 
@@ -30,7 +32,16 @@ def register_notifier(cls: type[Notifier]) -> type[Notifier]:
 
 
 def get_notifier_class(key: str): return _REGISTRY.get(key)
-def notifier_types(): return [{"key": k, "config_schema": c.config_schema} for k, c in sorted(_REGISTRY.items())]
+def notifier_types():
+    return [
+        {
+            "key": k,
+            "label": getattr(c, "label", "") or k.replace("_", " ").capitalize(),
+            "config_schema": c.config_schema,
+            "fields": normalize_schema(c.config_schema),
+        }
+        for k, c in sorted(_REGISTRY.items())
+    ]
 
 
 class NotifierDispatcher:

@@ -15,10 +15,10 @@ from guardlens.vlm import vlm_watcher
 class VlmWatchRule(Rule):
     key = "vlm_watch"
     param_schema = {
-        "trigger_classes": {"type": "array", "default": ["person", "motion"]},
-        "prompt": {"type": "string", "default": "Look carefully. Is anyone holding or is there any sharp or dangerous object (knife, scissors, blade, weapon)? Answer yes or no and name the object."},
-        "keywords": {"type": "array", "default": ["knife", "scissors", "blade", "weapon", "sharp"]},
-        "cooldown_seconds": {"type": "number", "default": 20, "min": 5, "max": 600},
+        "trigger_classes": {"type": "array", "default": ["person", "motion"], "label": "Check when these appear", "help": "The AI looks at the picture only after one of these is seen."},
+        "prompt": {"type": "string", "label": "Question for the AI", "default": "Look carefully. Is anyone holding or is there any sharp or dangerous object (knife, scissors, blade, weapon)? Answer yes or no and name the object."},
+        "keywords": {"type": "array", "default": ["knife", "scissors", "blade", "weapon", "sharp"], "label": "Alert on these words", "help": "Alert when the AI's answer mentions one of them."},
+        "cooldown_seconds": {"type": "number", "default": 20, "min": 5, "max": 600, "label": "Minimum time between checks"},
     }
 
     def evaluate(self, ctx: FrameContext, cfg: RuleConfig):

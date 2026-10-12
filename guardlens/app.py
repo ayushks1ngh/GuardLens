@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -106,6 +107,13 @@ def create_app() -> FastAPI:
     snapshots = Path(load_config().snapshots_dir())
     app.mount("/history", StaticFiles(directory=str(snapshots)), name="history")
 
+    origins = load_config().cors_origins
+    if origins:
+        app.add_middleware(
+            CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"],
+            expose_headers=["Last-Event-ID"],
+        )
+
     @app.middleware("http")
     async def security_headers(request, call_next):
         response = await call_next(request)
@@ -167,6 +175,33 @@ def create_app() -> FastAPI:
             "cameras": manager.status(),
             "recording": __import__("guardlens.recording", fromlist=["clip_recorder"]).clip_recorder.status(),
             "browser_publishers": __import__("guardlens.capture.webrtc", fromlist=["pairing_service"]).pairing_service.list_public(),
+        }
+
+    @app.get("/api/meta")
+    async def meta():
+        """Capability discovery for the UI: version, vocabularies, and optional features."""
+        import os
+
+        from guardlens.coco import COCO_CLASSES
+        from guardlens.notifiers import notifier_types
+        from guardlens.rules import rule_types
+
+        cfg = state.get("config")
+        return {
+            "name": "GuardLens",
+            "version": __version__,
+            "object_classes": COCO_CLASSES,
+            "capabilities": {
+                "vlm": bool(os.environ.get("GUARDLENS_NVIDIA_API_KEY")),
+                "recording": bool(getattr(getattr(cfg, "recording", None), "enabled", False)),
+                "analysis": bool(getattr(cfg, "analysis_enabled", False)),
+                "https": bool(getattr(cfg, "ssl_certfile", "")),
+            },
+            "plugins": {
+                "detectors": [d.get("key") for d in getattr(cfg, "detectors", [])],
+                "rules": [r["key"] for r in rule_types()],
+                "notifiers": [n["key"] for n in notifier_types()],
+            },
         }
 
     @app.get("/api/config")

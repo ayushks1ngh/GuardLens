@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 import cv2
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from guardlens.events import Event, get_engine, utcnow
 from guardlens.types import EventDraft

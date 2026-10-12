@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from guardlens.events import Camera, Rule, Zone, get_engine
 from guardlens.rules import get_rule_class, rule_types
 from guardlens.rules._policy import policy_store
+from guardlens.schema import error_detail, validate_values
 
 router = APIRouter(tags=["rules"])
 
@@ -21,6 +22,12 @@ def _refresh_runtime() -> None:
         analysis_manager.set_rule_configs(policy_store.rules())
     except Exception:
         pass
+
+
+def _check_params(rule_class, params) -> None:
+    problems = validate_values(getattr(rule_class, "param_schema", {}), params)
+    if problems:
+        raise HTTPException(422, error_detail(problems))
 
 
 class ZoneCreate(BaseModel):
@@ -130,8 +137,10 @@ def list_rules(camera_id: Optional[int] = None):
 
 @router.post("/api/rules", status_code=201)
 def create_rule(body: RuleCreate):
-    if not get_rule_class(body.type):
+    rule_class = get_rule_class(body.type)
+    if not rule_class:
         raise HTTPException(422, f"unknown rule type: {body.type}")
+    _check_params(rule_class, body.params)
     with Session(get_engine()) as session:
         if body.camera_id is not None and not session.get(Camera, body.camera_id):
             raise HTTPException(404, "camera not found")
@@ -154,6 +163,10 @@ def update_rule(rule_id: int, body: RuleUpdate):
         if not rule:
             raise HTTPException(404, "rule not found")
         changes = body.model_dump(exclude_unset=True)
+        if "params" in changes:
+            rule_class = get_rule_class(rule.type)
+            if rule_class:
+                _check_params(rule_class, changes["params"])
         camera_id = changes.get("camera_id", rule.camera_id)
         zone_id = changes.get("zone_id", rule.zone_id)
         if camera_id is not None and not session.get(Camera, camera_id):

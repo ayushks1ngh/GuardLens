@@ -63,7 +63,7 @@ def _draft(key: str, cfg: RuleConfig, matched: list[Detection], **metadata) -> E
 @register_rule
 class ZoneIntrusionRule(Rule):
     key = "zone_intrusion"
-    param_schema = {"classes": {"type": "list[str]", "default": ["person"]}}
+    param_schema = {"classes": {"type": "list[str]", "default": ["person"], "label": "Objects to watch", "help": "Alert when one of these enters the zone."}}
 
     def evaluate(self, ctx, cfg):
         matched = _matching(ctx, cfg, {"person"})
@@ -73,7 +73,7 @@ class ZoneIntrusionRule(Rule):
 @register_rule
 class LoiteringRule(Rule):
     key = "loitering"
-    param_schema = {"seconds": {"type": "float", "default": 10}, "classes": {"type": "list[str]", "default": ["person"]}}
+    param_schema = {"seconds": {"type": "float", "default": 10, "min": 1, "max": 600, "step": 1, "label": "Stay time", "help": "Alert when someone stays in the zone this long."}, "classes": {"type": "list[str]", "default": ["person"], "label": "Objects to watch", "help": "Which kinds of objects this rule watches for."}}
 
     def __init__(self):
         self._first_seen: dict[tuple, float] = {}
@@ -100,7 +100,7 @@ class LoiteringRule(Rule):
 @register_rule
 class LineCrossingRule(Rule):
     key = "line_crossing"
-    param_schema = {"line": {"type": "list[point]", "default": [[0.5, 0], [0.5, 1]]}, "classes": {"type": "list[str]", "default": ["person"]}}
+    param_schema = {"line": {"type": "list[point]", "default": [[0.5, 0], [0.5, 1]], "label": "Counting line", "help": "Draw the line people cross to be counted in or out."}, "classes": {"type": "list[str]", "default": ["person"], "label": "Objects to watch", "help": "Which kinds of objects this rule watches for."}}
 
     def __init__(self):
         self._side: dict[tuple, float] = {}
@@ -132,7 +132,7 @@ class LineCrossingRule(Rule):
 @register_rule
 class CrowdRule(Rule):
     key = "crowd"
-    param_schema = {"threshold": {"type": "int", "default": 5}, "classes": {"type": "list[str]", "default": ["person"]}}
+    param_schema = {"threshold": {"type": "int", "default": 5, "min": 1, "max": 200, "label": "Crowd size", "help": "Alert when at least this many are in view."}, "classes": {"type": "list[str]", "default": ["person"], "label": "Objects to watch", "help": "Which kinds of objects this rule watches for."}}
 
     def evaluate(self, ctx, cfg):
         matched = _matching(ctx, cfg, {"person"})
@@ -151,21 +151,21 @@ class _PresenceRule(Rule):
 class AnimalRule(_PresenceRule):
     key = "animal"
     defaults = {"bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe"}
-    param_schema = {"classes": {"type": "list[str]", "default": sorted(defaults)}}
+    param_schema = {"classes": {"type": "list[str]", "default": sorted(defaults), "label": "Objects to watch", "help": "Which kinds of objects this rule watches for."}}
 
 
 @register_rule
 class VehicleRule(_PresenceRule):
     key = "vehicle"
     defaults = {"bicycle", "car", "motorcycle", "bus", "train", "truck", "boat"}
-    param_schema = {"classes": {"type": "list[str]", "default": sorted(defaults)}}
+    param_schema = {"classes": {"type": "list[str]", "default": sorted(defaults), "label": "Objects to watch", "help": "Which kinds of objects this rule watches for."}}
 
 
 @register_rule
 class AfterHoursRule(_PresenceRule):
     key = "after_hours"
     defaults = {"person", "car", "motorcycle", "bus", "truck"}
-    param_schema = {"start": {"type": "HH:MM", "default": "22:00"}, "end": {"type": "HH:MM", "default": "06:00"}, "classes": {"type": "list[str]", "default": sorted(defaults)}}
+    param_schema = {"start": {"type": "HH:MM", "default": "22:00", "label": "Quiet hours start"}, "end": {"type": "HH:MM", "default": "06:00", "label": "Quiet hours end"}, "classes": {"type": "list[str]", "default": sorted(defaults), "label": "Objects to watch", "help": "Alert when any of these appear during quiet hours."}}
 
     def evaluate(self, ctx, cfg):
         current = datetime.fromtimestamp(ctx.timestamp).strftime("%H:%M")
@@ -203,10 +203,10 @@ class _StationaryRule(Rule):
 class AbandonedObjectRule(_StationaryRule):
     key = "abandoned_object"
     param_schema = {
-        "seconds": {"type": "float", "default": 20},
-        "movement_tolerance": {"type": "float", "default": 0.03},
-        "person_clearance": {"type": "float", "default": 0.15},
-        "classes": {"type": "list[str]", "default": sorted(_StationaryRule.defaults)},
+        "seconds": {"type": "float", "default": 20, "min": 1, "max": 3600, "label": "Left-alone time", "help": "Alert when an item stays still with nobody near it this long."},
+        "movement_tolerance": {"type": "float", "default": 0.03, "min": 0, "max": 0.5, "step": 0.01, "label": "Movement allowed", "help": "How far (fraction of the picture) it may shift and still count as still."},
+        "person_clearance": {"type": "float", "default": 0.15, "min": 0, "max": 1, "step": 0.01, "label": "Owner distance", "help": "A person closer than this counts as its owner."},
+        "classes": {"type": "list[str]", "default": sorted(_StationaryRule.defaults), "label": "Objects to watch"},
     }
 
     def _eligible(self, detection, ctx, cfg):
@@ -224,11 +224,11 @@ class PackageRule(_StationaryRule):
     key = "package"
     defaults = {"backpack", "handbag", "suitcase", "box"}
     param_schema = {
-        "seconds": {"type": "float", "default": 10},
-        "movement_tolerance": {"type": "float", "default": 0.03},
-        "spot": {"type": "point", "default": [0.5, 0.5]},
-        "spot_radius": {"type": "float", "default": 0.2},
-        "classes": {"type": "list[str]", "default": sorted(defaults)},
+        "seconds": {"type": "float", "default": 10, "min": 1, "max": 3600, "label": "Left time", "help": "Alert when an item stays at the spot this long."},
+        "movement_tolerance": {"type": "float", "default": 0.03, "min": 0, "max": 0.5, "step": 0.01, "label": "Movement allowed"},
+        "spot": {"type": "point", "default": [0.5, 0.5], "label": "Drop-off spot", "help": "Where packages are left, for example the door."},
+        "spot_radius": {"type": "float", "default": 0.2, "min": 0.01, "max": 1, "step": 0.01, "label": "Spot size"},
+        "classes": {"type": "list[str]", "default": sorted(defaults), "label": "Objects to watch"},
     }
 
     def _eligible(self, detection, ctx, cfg):
@@ -243,7 +243,7 @@ class PackageRule(_StationaryRule):
 @register_rule
 class FallRule(Rule):
     key = "fall"
-    param_schema = {"seconds": {"type": "float", "default": 2}, "aspect_ratio": {"type": "float", "default": 1.2}}
+    param_schema = {"seconds": {"type": "float", "default": 2, "min": 0.5, "max": 120, "label": "Down time", "help": "Alert when a person stays lying down this long."}, "aspect_ratio": {"type": "float", "default": 1.2, "min": 0.5, "max": 4, "step": 0.1, "label": "Lying-down sensitivity", "help": "How much wider than tall a person must look to count as lying down."}}
 
     def __init__(self):
         self._horizontal_since: dict[tuple, float] = {}

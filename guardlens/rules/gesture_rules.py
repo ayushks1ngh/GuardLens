@@ -21,9 +21,9 @@ def _gestures(ctx: FrameContext, minimum: float):
 class GestureDetectedRule(Rule):
     key = "gesture_detected"
     param_schema = {
-        "gestures": {"type": "array", "default": ["open_palm"]},
-        "vocabulary": {"type": "string", "default": "basic_gestures"},
-        "min_confidence": {"type": "number", "default": 0.7, "min": 0, "max": 1},
+        "gestures": {"type": "array", "default": ["open_palm"], "label": "Gestures to detect"},
+        "vocabulary": {"type": "string", "default": "basic_gestures", "label": "Gesture set"},
+        "min_confidence": {"type": "number", "default": 0.7, "min": 0, "max": 1, "step": 0.05, "label": "Minimum confidence"},
     }
 
     def evaluate(self, ctx: FrameContext, cfg: RuleConfig):
@@ -46,8 +46,8 @@ class GestureDetectedRule(Rule):
 class HelpGestureRule(GestureDetectedRule):
     key = "help_gesture"
     param_schema = {
-        "gestures": {"type": "array", "default": ["help"]},
-        "min_confidence": {"type": "number", "default": 0.8, "min": 0, "max": 1},
+        "gestures": {"type": "array", "default": ["help"], "label": "Gestures to detect"},
+        "min_confidence": {"type": "number", "default": 0.8, "min": 0, "max": 1, "step": 0.05, "label": "Minimum confidence"},
     }
 
     def evaluate(self, ctx: FrameContext, cfg: RuleConfig):
@@ -61,10 +61,10 @@ class HelpGestureRule(GestureDetectedRule):
 class GestureSequenceRule(Rule):
     key = "gesture_sequence"
     param_schema = {
-        "sequence": {"type": "array", "default": ["H", "E", "L", "P"]},
-        "window_seconds": {"type": "number", "default": 10, "min": 1, "max": 120},
-        "stable_frames": {"type": "integer", "default": 3, "min": 1, "max": 30},
-        "min_confidence": {"type": "number", "default": 0.75, "min": 0, "max": 1},
+        "sequence": {"type": "array", "default": ["H", "E", "L", "P"], "label": "Sign sequence", "help": "Signs that must be shown in this order."},
+        "window_seconds": {"type": "number", "default": 10, "min": 1, "max": 120, "label": "Time allowed"},
+        "stable_frames": {"type": "integer", "default": 3, "min": 1, "max": 30, "label": "Frames to hold each sign"},
+        "min_confidence": {"type": "number", "default": 0.75, "min": 0, "max": 1, "step": 0.05, "label": "Minimum confidence"},
     }
 
     def __init__(self):

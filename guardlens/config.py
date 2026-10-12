@@ -41,6 +41,8 @@ class Config(BaseModel):
     port: int = 8080
     ssl_certfile: str = ""
     ssl_keyfile: str = ""
+    # Origins allowed to call the API from another host (split UI hosting). Empty = same-origin only.
+    cors_origins: list[str] = Field(default_factory=list)
 
     # Storage
     data_dir: str = str(ROOT / "data")

@@ -17,9 +17,9 @@ from guardlens.types import EventDraft, FrameContext
 class ObjectClassRule(Rule):
     key = "object_class"
     param_schema = {
-        "classes": {"type": "list[str]", "help": "model class names to alert on, e.g. ['person']"},
-        "min_confidence": {"type": "float", "default": 0.0},
-        "min_count": {"type": "int", "default": 1},
+        "classes": {"type": "list[str]", "label": "Objects to watch", "help": "Alert when any of these is seen."},
+        "min_confidence": {"type": "float", "default": 0.0, "min": 0, "max": 1, "step": 0.05, "label": "Minimum confidence", "help": "Ignore detections the model is less sure about."},
+        "min_count": {"type": "int", "default": 1, "min": 1, "max": 100, "label": "Minimum number", "help": "Alert only when at least this many are seen at once."},
     }
 
     def evaluate(self, ctx: FrameContext, cfg: RuleConfig) -> Optional[EventDraft]:

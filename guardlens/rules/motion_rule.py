@@ -10,8 +10,8 @@ from guardlens.types import EventDraft, FrameContext
 class MotionRule(Rule):
     key = "motion"
     param_schema = {
-        "min_confidence": {"type": "number", "default": 0.2, "min": 0, "max": 1},
-        "zone_only": {"type": "boolean", "default": False},
+        "min_confidence": {"type": "number", "default": 0.2, "min": 0, "max": 1, "step": 0.05, "label": "Sensitivity threshold", "help": "Higher means only larger movement counts."},
+        "zone_only": {"type": "boolean", "default": False, "label": "Only inside zones", "help": "Ignore movement outside this camera's zones."},
     }
 
     def evaluate(self, ctx: FrameContext, cfg: RuleConfig):

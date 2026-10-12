@@ -254,3 +254,18 @@ plugins are independently discovered. `basic_gestures` is model-free infrastruct
 `asl_static` loads an operator-supplied licensed ONNX classifier and is explicitly scoped
 to isolated static ASL fingerspelling (not J/Z dynamics, phrases, or translation).
 NARUTO remains reference-only, not a default feature. No model is downloaded implicitly.
+
+---
+
+## ADR-015 — React/Vite dashboard supersedes the single-page HTML (ADR-008)
+
+**Status:** Accepted 2026-10-12.
+**Context:** Settings/Rules expose raw numbers and JSON; every new plugin (rules,
+notifiers, agents) needs a friendly form. The plain-HTML dashboard is a single 766-line
+file and cannot grow into schema-driven forms, canvas widgets, or separate hosting
+cleanly. The REST API is the stable boundary, so a rewrite needs no backend change.
+**Decision:** Build a React + Vite + TypeScript app in `frontend-app/`, served by FastAPI
+at `/app` while the old dashboard stays at `/`. `/` switches only after a feature-parity
+checklist passes. A single `API_BASE` makes the UI hostable separately later.
+**Consequences:** Adds a Node build step (Docker multi-stage). Forms are generated from
+plugin field schemas (label/help/unit/range/enum/widget) so a new plugin needs no UI edit.

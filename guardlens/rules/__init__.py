@@ -18,6 +18,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from guardlens.schema import normalize_schema
 from guardlens.types import EventDraft, FrameContext
 
 logger = logging.getLogger("guardlens.rules")
@@ -73,7 +74,13 @@ def available_rules() -> list[str]:
 def rule_types() -> list[dict]:
     """Expose registered rule types + their param schemas (drives the UI form)."""
     return [
-        {"key": k, "param_schema": getattr(c, "param_schema", {})}
+        {
+            "key": k,
+            "label": getattr(c, "label", "") or k.replace("_", " ").capitalize(),
+            "description": (c.__doc__ or "").strip().splitlines()[0] if c.__doc__ else "",
+            "param_schema": getattr(c, "param_schema", {}),
+            "fields": normalize_schema(getattr(c, "param_schema", {})),
+        }
         for k, c in sorted(_REGISTRY.items())
     ]
 

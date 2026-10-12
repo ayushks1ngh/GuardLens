@@ -103,3 +103,26 @@ def test_analysis_event_sink_failure_is_isolated():
     )
     ctx = worker.analyze_once(np.zeros((100, 100, 3), dtype=np.uint8), 1000.0)
     assert ctx.detections and ctx.detections[0].track_id is not None
+
+
+def test_delete_evidence_removes_unshared_clip_only(tmp_path):
+    from guardlens.recording import clip_recorder
+    with TestClient(app):
+        clip_recorder.configure(tmp_path / "clips", {"enabled": False})
+        event_store.configure(tmp_path / "snapshots")
+        camera_id = _camera()
+        clips = clip_recorder.clips_dir
+        clips.mkdir(parents=True, exist_ok=True)
+        (clips / "solo.mp4").write_bytes(b"x")
+        (clips / "shared.mp4").write_bytes(b"x")
+        with Session(get_engine()) as session:
+            events = [Event(camera_id=camera_id, type="person", severity="info", clip_path=name)
+                      for name in ("solo.mp4", "shared.mp4", "shared.mp4")]
+            session.add_all(events)
+            session.commit()
+            for event in events:
+                session.refresh(event)
+        event_store.delete_evidence(events[0])
+        assert not (clips / "solo.mp4").exists()
+        event_store.delete_evidence(events[1])
+        assert (clips / "shared.mp4").exists()  # another event still references it

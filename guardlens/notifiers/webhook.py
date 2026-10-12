@@ -11,9 +11,9 @@ from guardlens.notifiers import Notifier, register_notifier
 class WebhookNotifier(Notifier):
     key = "webhook"
     config_schema = {
-        "url": {"type": "url", "required": True},
-        "timeout_seconds": {"type": "float", "default": 5},
-        "headers": {"type": "object", "default": {}},
+        "url": {"type": "url", "required": True, "label": "Webhook address", "help": "GuardLens sends each alert here as JSON."},
+        "timeout_seconds": {"type": "float", "default": 5, "min": 1, "max": 60, "label": "Give up after"},
+        "headers": {"type": "object", "default": {}, "label": "Extra headers", "help": "For example an authorization header."},
     }
 
     def setup(self, config):
