@@ -11,3 +11,15 @@ button.link { background: none; border: 0; padding: 0; color: var(--info); text-
 .copy-box { display: flex; gap: 8px; } .copy-box input { flex: 1; font-family: ui-monospace, monospace; }
 .warn-box { border: 1px solid var(--warn); border-radius: 8px; padding: 8px 12px; color: var(--warn); }
 nav button.signout { margin-top: 8px; color: var(--muted); }
+
+/* Rule helper, incident report, health issues */
+.rule-assist textarea { width: 100%; box-sizing: border-box; margin-top: 8px; font: inherit; padding: 8px; }
+.summary { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0; }
+.summary dt { color: var(--muted); } .summary dd { margin: 0; }
+.problems { border: 1px solid var(--crit); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+.preview-result { margin: 8px 0; }
+.preview-control { margin-top: 12px; }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.incident-panel { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-top: 8px; }
+.markdown h3, .markdown h4, .markdown h5 { margin: 12px 0 4px; } .markdown p { margin: 6px 0; }
+.issue p { margin: 6px 0 0; }

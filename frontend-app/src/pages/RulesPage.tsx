@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
 import { SchemaForm, defaultValues } from "../components/SchemaForm";
+import { RuleAssist, PreviewControl } from "../components/RuleAssist";
 import { useSnapshot } from "../lib/snapshot";
 import type { Camera, FieldError, Meta, PluginType, RuleRow, Values, ZoneRow } from "../types";
 
@@ -83,6 +84,9 @@ export function RulesPage({ meta }: { meta: Meta | null }) {
         </label>
       </header>
 
+      <RuleAssist types={types} cameras={cameras} onSaved={() => { void load(); }}
+        onEdit={(p) => { setErrors([]); setMessage(""); setDraft({ type: p.type, name: p.name, camera_id: p.camera_id, zone_id: p.zone_id, severity: p.severity, cooldown_seconds: p.cooldown_seconds, params: p.params ?? {} }); }} />
+
       {draft && activeType && (
         <div className="card">
           <h3>{draft.id ? "Edit rule" : `New rule: ${activeType.label}`}</h3>
@@ -115,6 +119,7 @@ export function RulesPage({ meta }: { meta: Meta | null }) {
           </div>
           <SchemaForm fields={activeType.fields} values={draft.params} errors={errors}
             objectClasses={meta?.object_classes} background={snapshot.url} onChange={(params) => setDraft({ ...draft, params })} />
+          <PreviewControl draft={draft} />
           {message && <p className="error" role="alert">{message}</p>}
           <div className="actions">
             <button type="button" className="primary" onClick={save}>Save rule</button>

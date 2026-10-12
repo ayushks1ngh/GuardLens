@@ -5,6 +5,7 @@ import {
   NO_FILTERS, RANGE_LABELS, buildEventQuery, humanizeType, applyEventUpdate, isNewCritical, matchesFilters, mergeLiveEvent,
   timeAgo, type EventFilters, type TimeRange,
 } from "../lib/eventLogic";
+import { IncidentReport } from "../components/IncidentReport";
 import { readAgentViews } from "../lib/agentNotes";
 import { takePendingEventId } from "../lib/navigate";
 import { useEventStream } from "../lib/useEventStream";
@@ -127,6 +128,7 @@ function EventCard({ event, cameraName, onChanged, onDeleted }: {
           </div>
         </div>
       )}
+      <IncidentReport eventId={event.id} />
       {error && <p className="error" role="alert">{error}</p>}
     </li>
   );

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
+import { QuietHours } from "../components/QuietHours";
 import { SchemaForm, defaultValues } from "../components/SchemaForm";
 import type { FieldError, Meta, NotifierRow, NotifierType, Severity, Values } from "../types";
 
@@ -136,6 +137,7 @@ export function NotifiersPage(_props: { meta: Meta | null }) {
         ))}
         {!rows.length && <li className="hint">No notifiers yet. Add one above.</li>}
       </ul>
+      <QuietHours />
     </section>
   );
 }
