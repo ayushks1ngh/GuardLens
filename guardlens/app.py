@@ -82,6 +82,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job("clip-retention", lambda: __import__("guardlens.recording", fromlist=["clip_recorder"]).clip_recorder.prune(), every=3600)
     scheduler.add_job("nightly-report", lambda: __import__("guardlens.api.reporting", fromlist=["_generate"])._generate(
         __import__("datetime").datetime.now(__import__("datetime").timezone.utc).date(), force=True), daily_at="23:55")
+    scheduler.add_job("chat-frames", lambda: __import__("guardlens.assistant", fromlist=["prune_chat_frames"]).prune_chat_frames(cfg.snapshots_dir()), every=3600)
     agent_runner.attach_scheduler(scheduler)
     scheduler.start()
 
@@ -155,6 +156,7 @@ def create_app() -> FastAPI:
 
     # Routers
     from guardlens.api.agents import router as agents_router
+    from guardlens.api.assistant import router as assistant_router
     from guardlens.api.cameras import router as cameras_router
     from guardlens.api.events import router as events_router
     from guardlens.api.faces import router as faces_router
@@ -168,6 +170,7 @@ def create_app() -> FastAPI:
     from guardlens.api.vision import router as vision_router
 
     app.include_router(agents_router)
+    app.include_router(assistant_router)
     app.include_router(privacy_router)
     app.include_router(cameras_router)
     app.include_router(events_router)
