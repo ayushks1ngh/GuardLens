@@ -206,3 +206,24 @@ Daily report payload (shape):
   "resolved_at": null
 }
 ```
+
+---
+
+## Post-2.0 API additions (docs/13)
+
+All endpoints below require login once it is enabled (`docs/14`), except where noted.
+
+| Area | Endpoints |
+|------|-----------|
+| Discovery | `GET /api/meta`, `GET /healthz` (public), `GET /api/health/issues` |
+| Schema-driven settings | `GET /api/rules/types`, `/api/notifiers/types`, `/api/agents` → each type has `fields` (label/help/unit/min/max/enum/widget); invalid settings → `422 {detail:{message, errors:[{field,message}]}}` |
+| Cameras | `GET /api/cameras/{id}/snapshot` (JPEG) |
+| People | `PATCH /api/persons/{id}` |
+| Events | `GET /api/events/stream` (SSE: new events as default messages; `event: event_updated` for agent annotations; fresh connections no longer replay history), `GET /api/events/{id}/incident-report?ai=` |
+| Agents | `GET /api/agents`, `PUT /api/agents/{key}`, `POST /api/agents/{key}/run`, `GET /api/agents/runs`, `GET /api/agents/ai`, `GET /api/agents/scheduler` |
+| Privacy | `GET/PUT /api/privacy` (cameras that never send video to a cloud AI) |
+| Assistant | `POST /api/assistant/chat`, `DELETE /api/assistant/sessions/{id}` |
+| Rules | `POST /api/rules/propose` (AI draft, never saves), `POST /api/rules/preview` (dry-run replay) |
+| Notifications | `GET/PUT /api/notifiers/routing` (quiet hours) |
+| Search | `GET /api/search`, `GET /api/search/similar/{id}`, `GET /api/search/status`, `PUT /api/search/settings`, `POST /api/search/reindex` |
+| Auth | `GET /api/auth/status` (public), `POST /api/auth/setup|login|logout` (public), `PUT /api/auth/password|settings`, `GET/POST/DELETE /api/auth/tokens` |

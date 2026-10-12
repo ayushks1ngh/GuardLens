@@ -11,7 +11,7 @@ export interface SearchStatus {
 export const EXAMPLE_QUERIES = ["person in a red jacket", "white van yesterday", "someone at the door last 3 hours"];
 
 export const OFF_EXPLANATION =
-  "Footage search is off. Turning it on downloads a ~350 MB picture-understanding model the first time and indexes your existing alerts on this computer. Nothing is sent to the cloud.";
+  "Footage search is off. Turning it on downloads a ~600 MB picture-understanding model the first time (this can take several minutes on a slow connection) and indexes your existing alerts on this computer. Nothing is sent to the cloud.";
 
 export function matchNote(source: string): string {
   if (source === "both") return "matched both";

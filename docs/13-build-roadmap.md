@@ -1,6 +1,9 @@
 # 13 — Build Roadmap (post-2.0): UX, Agents, Search, Remote
 
-**Status:** Plan agreed in part (2026-10-12). Decided: **M1 first**, frontend as a
+**Status (2026-10-13): M1–M6 implemented and verified** — see the tail of `08-build-log.md`; the
+plan below is kept as the design record. Remaining: physical-hardware gates, operator review in a
+browser, triage evaluation on real labelled alerts, response playbooks (deferred by design).
+**Original status (2026-10-12):** Plan agreed in part. Decided: **M1 first**, frontend as a
 **React/Vite rewrite** (supersedes ADR-008). Still open: agent act-vs-suggest, cloud
 provider/budget, duplicate `Mall` camera cleanup. Research basis:
 [`12-agents-research.md`](12-agents-research.md); earlier ideas: [`11-…`](11-roadmap-ux-hosting-agents.md).

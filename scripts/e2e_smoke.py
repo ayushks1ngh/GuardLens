@@ -3,7 +3,9 @@
 Boots GuardLens on a temporary data directory, adds the bundled sample video as a camera,
 and walks the product: detection -> events -> evidence -> agents -> search -> login. Prints
 PASS/FAIL per step and exits non-zero on any failure. Takes a few minutes the first time
-(downloads the search model once). Usage: python scripts/e2e_smoke.py [--skip-search]
+(downloads the search model once). Usage: python scripts/e2e_smoke.py [--skip-search] [--ai]
+--ai also exercises triage/chat/rule drafting/briefing with the provider key(s) from .env
+(frames of the bundled sample video are sent to that provider).
 """
 import os
 import shutil
@@ -41,12 +43,77 @@ def wait_for(fn, timeout, every=1.0):
     return last
 
 
-def main(skip_search: bool) -> int:
+def load_ai_keys() -> dict:
+    """Only the AI provider keys from the gitignored .env (never printed, never TLS/other settings)."""
+    keys = {}
+    env_file = ROOT / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            name, _, value = line.partition("=")
+            if name.strip() in ("GUARDLENS_NVIDIA_API_KEY", "GUARDLENS_GEMINI_API_KEY", "GUARDLENS_OPENROUTER_API_KEY") and value.strip():
+                keys[name.strip()] = value.strip().strip('"').strip("'")
+    return keys
+
+
+def run_ai_steps(http, cid, events) -> None:
+    import re
+    status = http.get(f"{BASE}/api/agents/ai").json()
+    step("AI provider is configured", status["available"], str([p["name"] for p in status["providers"] if p["configured"]]))
+    if not status["available"]:
+        return
+    http.put(f"{BASE}/api/agents/event_triage", json={"config": {"enabled": True, "max_runs_per_hour": 100}})
+
+    def noted():
+        for ev in http.get(f"{BASE}/api/events", params={"camera_id": cid, "limit": 50}).json()["items"]:
+            note = ((ev.get("event_metadata") or {}).get("agent") or {}).get("event_triage")
+            if note:
+                return ev, note
+
+    found = wait_for(noted, 150, every=3)
+    step("triage annotates a real alert via the live model", bool(found))
+    if found:
+        note = found[1]
+        step("triage verdict parsed (or failed open readably)", note.get("verdict") in ("parsed", "unparsed"),
+             f"{note.get('verdict')} threat={note.get('threat')} title={str(note.get('title'))[:50]!r} model={note.get('model')}")
+        step("triage never changed the alert's own severity", found[0]["severity"] == "warning")
+    runs = http.get(f"{BASE}/api/agents/runs", params={"agent": "event_triage", "limit": 20}).json()
+    step("agent runs are audited", bool(runs), str(sorted({r["status"] for r in runs})))
+    chat = http.post(f"{BASE}/api/assistant/chat", json={"question": "What happened in the last hour? Cite alert ids.", "camera_id": cid}, timeout=90)
+    step("assistant answers about the camera", chat.ok, chat.text[:100] if not chat.ok else chat.json()["answer"][:80])
+    if chat.ok:
+        body = chat.json()
+        step("assistant returns the analysed frame", bool(body["frame_url"]) and http.get(BASE + body["frame_url"]).ok)
+        known = {u["id"] for u in body["events_used"]}
+        step("assistant citations only reference supplied alerts", set(body["citations"]) <= known, str(body["citations"]))
+        follow = http.post(f"{BASE}/api/assistant/chat", json={"question": "and how many people were there?",
+                                                                "session_id": body["session_id"], "camera_id": cid}, timeout=90)
+        step("assistant follow-up works with memory", follow.ok)
+    draft = http.post(f"{BASE}/api/rules/propose", json={"text": "Warn me if more than 3 people are in view on the Mall sample camera"}, timeout=90)
+    step("rule drafting returns a validated draft", draft.ok, draft.text[:120] if not draft.ok else "")
+    if draft.ok:
+        proposal = draft.json()["proposal"]
+        step("draft is a known rule type with checked settings", bool(proposal["type"]), f"type={proposal['type']} problems={proposal['problems']}")
+        rules_now = http.get(f"{BASE}/api/rules").json()
+        step("drafting did not save anything", all(r["name"] != proposal["name"] for r in rules_now), proposal["name"])
+    http.post(f"{BASE}/api/agents/daily_briefing/run", json={}, timeout=120)
+    rep = http.get(f"{BASE}/api/reports/daily").json()
+    step("AI briefing written or falls back safely", "daily briefing" in rep["text"], str(rep["content"].get("fallback") or "AI narrative"))
+    if rep["content"].get("narrative"):
+        cited = {int(i) for i in re.findall(r"\[E(\d+)\]", rep["content"]["narrative"])}
+        listed = {e["id"] for e in http.get(f"{BASE}/api/events", params={"limit": 500}).json()["items"]}
+        step("briefing cites only real alerts", cited <= listed, str(sorted(cited))[:60])
+
+
+def main(skip_search: bool, with_ai: bool = False) -> int:
     data = Path(tempfile.mkdtemp(prefix="guardlens-e2e-"))
     env = {**os.environ, "GUARDLENS_DATA_DIR": str(data), "GUARDLENS_PORT": str(PORT), "GUARDLENS_HOST": "127.0.0.1",
            "GUARDLENS_ANALYSIS_ENABLED": "true"}
-    for key in ("GUARDLENS_NVIDIA_API_KEY", "GUARDLENS_SSL_CERTFILE", "GUARDLENS_SSL_KEYFILE", "GUARDLENS_AUTH_DISABLE"):
+    for key in ("GUARDLENS_NVIDIA_API_KEY", "GUARDLENS_GEMINI_API_KEY", "GUARDLENS_OPENROUTER_API_KEY",
+                "GUARDLENS_SSL_CERTFILE", "GUARDLENS_SSL_KEYFILE", "GUARDLENS_AUTH_DISABLE"):
         env.pop(key, None)
+    if with_ai:
+        env.update(load_ai_keys())
+        print("AI mode: using provider key(s) from .env:", sorted(load_ai_keys()) or "NONE FOUND", flush=True)
     log = open(data / "server.log", "w")
     server = subprocess.Popen([sys.executable, "-m", "guardlens"], cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
     http = requests.Session()
@@ -99,11 +166,14 @@ def main(skip_search: bool) -> int:
         step("agents listed with settings fields", len(http.get(f"{BASE}/api/agents").json()) >= 4)
         unusual = http.put(f"{BASE}/api/agents/unusual_activity", json={"config": {"enabled": True}})
         step("an agent can be turned on from the API", unusual.ok and unusual.json()["status"]["state"] == "active")
-        step("AI-dependent helper degrades cleanly without a key",
-             http.post(f"{BASE}/api/rules/propose", json={"text": "alert me when anyone is near the door"}).status_code == 503)
-        step("assistant says AI is not configured (no crash)", http.post(f"{BASE}/api/assistant/chat", json={"question": "hello"}).status_code == 503)
+        if not with_ai:
+            step("AI-dependent helper degrades cleanly without a key",
+                 http.post(f"{BASE}/api/rules/propose", json={"text": "alert me when anyone is near the door"}).status_code == 503)
+            step("assistant says AI is not configured (no crash)", http.post(f"{BASE}/api/assistant/chat", json={"question": "hello"}).status_code == 503)
         issues = http.get(f"{BASE}/api/health/issues").json()
         step("health issues are explained", all({"message", "fix"} <= set(i) for i in issues), f"{len(issues)} items")
+        if with_ai:
+            run_ai_steps(http, cid, events or [])
         briefing = http.post(f"{BASE}/api/agents/daily_briefing/run", json={})
         step("daily briefing falls back to the plain report without AI", briefing.ok and briefing.json()["status"] == "ok")
         report = http.get(f"{BASE}/api/reports/daily").json()
@@ -156,4 +226,4 @@ def main(skip_search: bool) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main("--skip-search" in sys.argv))
+    sys.exit(main("--skip-search" in sys.argv, "--ai" in sys.argv))
