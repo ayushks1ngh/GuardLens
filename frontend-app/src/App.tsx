@@ -7,6 +7,11 @@ export function App() {
   const [page, setPage] = useState(PAGES[0].key);
   const [meta, setMeta] = useState<Meta | null>(null);
   useEffect(() => { api<Meta>("/api/meta").then(setMeta).catch(() => setMeta(null)); }, []);
+  useEffect(() => {
+    const go = (e: Event) => { const p = (e as CustomEvent<{ page?: string }>).detail?.page; if (p && PAGES.some((x) => x.key === p)) setPage(p); };
+    window.addEventListener("guardlens:navigate", go);
+    return () => window.removeEventListener("guardlens:navigate", go);
+  }, []);
   const Page = PAGES.find((p) => p.key === page)?.component ?? PAGES[0].component;
   return (
     <div className="shell">

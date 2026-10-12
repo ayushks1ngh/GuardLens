@@ -99,3 +99,10 @@ export function mergeLiveEvent(list: EventRow[], event: EventRow, show: boolean)
   if (index >= 0) return list.map((e, i) => (i === index ? { ...e, ...event } : e));
   return show ? [event, ...list] : list;
 }
+
+/** An `event_updated` message only refreshes a row that is already shown; it never inserts or alarms. */
+export function applyEventUpdate(list: EventRow[], event: EventRow): EventRow[] {
+  const { kind: _kind, ...fields } = event as EventRow & { kind?: string };
+  void _kind;
+  return list.map((e) => (e.id === event.id ? { ...e, ...fields } : e));
+}

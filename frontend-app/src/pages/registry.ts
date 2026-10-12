@@ -10,6 +10,8 @@ import { EventsPage } from "./EventsPage";
 import { LivePage } from "./LivePage";
 import { RulesPage } from "./RulesPage";
 import { ZonesPage } from "./ZonesPage";
+import { AgentsPage } from "./AgentsPage";
+import { AssistantPage } from "./AssistantPage";
 
 export interface PageDef { key: string; label: string; component: ComponentType<{ meta: Meta | null }> }
 
@@ -24,5 +26,7 @@ export const PAGES: PageDef[] = [
   { key: "notifiers", label: "Notifications", component: NotifiersPage },
   { key: "recording", label: "Recording", component: RecordingPage },
   { key: "reports", label: "Reports", component: ReportsPage },
+  { key: "assistant", label: "Ask GuardLens", component: AssistantPage },
+  { key: "agents", label: "Agents", component: AgentsPage },
   { key: "health", label: "Health", component: HealthPage },
 ];

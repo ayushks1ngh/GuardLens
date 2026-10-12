@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, API_BASE, ApiError } from "../api";
 import { isMuted, playAlarm, setMuted, unlockAudio } from "../lib/alarm";
 import {
-  NO_FILTERS, RANGE_LABELS, buildEventQuery, humanizeType, isNewCritical, matchesFilters, mergeLiveEvent,
-  readAgentNotes, timeAgo, type EventFilters, type TimeRange,
+  NO_FILTERS, RANGE_LABELS, buildEventQuery, humanizeType, applyEventUpdate, isNewCritical, matchesFilters, mergeLiveEvent,
+  timeAgo, type EventFilters, type TimeRange,
 } from "../lib/eventLogic";
+import { readAgentViews } from "../lib/agentNotes";
+import { takePendingEventId } from "../lib/navigate";
 import { useEventStream } from "../lib/useEventStream";
 import type { CameraFull, EventPage, EventRow, Meta } from "../types";
 
@@ -29,15 +31,18 @@ function ChipGroup({ label, options, value, onChange }: {
 }
 
 function AgentBlock({ meta }: { meta: unknown }) {
-  const notes = readAgentNotes(meta);
-  if (!notes.length) return null;
+  const views = readAgentViews(meta);
+  if (!views.length) return null;
   return (
     <div className="agent-note" aria-label="Assistant analysis">
-      {notes.map((n, i) => (
+      {views.map((v, i) => (
         <div key={i}>
-          {n.title && <strong>{n.title}</strong>}
-          {n.threat && <span className="badge warning"> Threat: {n.threat}</span>}
-          {n.summary && <p>{n.summary}</p>}
+          {v.pill && <span className={`pill pill-${v.pill.tone}`}>{v.pill.label}</span>}
+          {v.title && <strong> {v.title}</strong>}
+          {v.legacyThreat && <span className="badge warning"> Threat: {v.legacyThreat}</span>}
+          {v.repeatOf !== undefined && <span className="hint"> Repeat of #{v.repeatOf}</span>}
+          {v.summary && <p>{v.summary}</p>}
+          {v.suggestion && <p className="hint">{v.suggestion}</p>}
         </div>
       ))}
     </div>
@@ -79,7 +84,7 @@ function EventCard({ event, cameraName, onChanged, onDeleted }: {
   const notes = (detail?.notes ?? []);
   const panelId = `event-${event.id}-panel`;
   return (
-    <li className={`event-card sev-${sevClass}`}>
+    <li id={`event-${event.id}`} className={`event-card sev-${sevClass}`}>
       <div className="event-head">
         <span className={`badge ${sevClass}`}>{event.severity}</span>
         <strong className="grow">{humanizeType(event.type)}</strong>
@@ -174,7 +179,17 @@ export function EventsPage({ meta: _meta }: { meta: Meta | null }) {
     const show = matchesFilters(event, filtersRef.current, Date.now());
     setEvents((list) => mergeLiveEvent(list, event, show && !known));
     if (show && !known) setTotal((t) => t + 1);
-  });
+  }, (updated) => setEvents((list) => applyEventUpdate(list, updated)));
+
+  // Arriving from a chat citation: make sure that alert is visible and scrolled into view.
+  useEffect(() => {
+    const id = takePendingEventId();
+    if (id === null) return;
+    api<EventRow>(`/api/events/${id}`).then((e) => {
+      setEvents((list) => (list.some((x) => x.id === id) ? list : [e, ...list]));
+      setTimeout(() => document.getElementById(`event-${id}`)?.scrollIntoView?.({ block: "center" }), 50);
+    }).catch(() => undefined);
+  }, []);
 
   const toggleMute = () => { const next = !muted; setMuted(next); setMutedState(next); if (!next) unlockAudio(); };
   const cameraName = useMemo(() => {
