@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { HealthPage } from "./pages/HealthPage";
-import { RulesPage } from "./pages/RulesPage";
+import { PAGES } from "./pages/registry";
 import type { Meta } from "./types";
 
-const PAGES = [
-  { key: "rules", label: "Rules" },
-  { key: "health", label: "Health" },
-] as const;
-type PageKey = (typeof PAGES)[number]["key"];
-
 export function App() {
-  const [page, setPage] = useState<PageKey>("rules");
+  const [page, setPage] = useState(PAGES[0].key);
   const [meta, setMeta] = useState<Meta | null>(null);
   useEffect(() => { api<Meta>("/api/meta").then(setMeta).catch(() => setMeta(null)); }, []);
+  const Page = PAGES.find((p) => p.key === page)?.component ?? PAGES[0].component;
   return (
     <div className="shell">
       <nav aria-label="Main">
@@ -25,10 +19,7 @@ export function App() {
         ))}
         <a className="legacy" href="/">Classic dashboard</a>
       </nav>
-      <main>
-        {page === "rules" && <RulesPage meta={meta} />}
-        {page === "health" && <HealthPage meta={meta} />}
-      </main>
+      <main><Page meta={meta} /></main>
     </div>
   );
 }
