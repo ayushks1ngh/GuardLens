@@ -14,10 +14,10 @@ memory of the previous conversation. Read this first; it tells you *where we are
 | Field | Value |
 |-------|-------|
 | **Last completed phase** | Improvements A–F + interactive hardening (VLM chat, phone IP cam, UI) ✅ |
-| **Next phase** | Accuracy/UX polish (see improvement list §8); optional custom detector |
+| **Next phase** | docs/13 roadmap: finish M1c screens (Live, Events, Cameras, Zones, Faces, Notifiers, Recording, Reports) in `frontend-app/`, then M2 agent foundation |
 | **Working tree** | A–F + VLM/UI work on `main`, being committed; secrets gitignored |
-| **Tests** | 78/78 passing (47 baseline + 31 improvement) + live manual checks |
-| **Last updated** | 2026-10-11 |
+| **Tests** | 86 pytest + 5 vitest passing |
+| **Last updated** | 2026-10-13 |
 
 **One-line resume:** server runs via `./scripts/testing_server.sh` (reads gitignored
 `.env` for the VLM key + optional TLS). Webcam needs `usbipd attach --wsl --busid 2-7`;
@@ -45,7 +45,7 @@ Windows portproxy, as a browser/WebRTC publisher. VLM "ask the camera" chat and 
 cd /home/ayush/GuardLens
 git log --oneline -10
 git status
-timeout 600 .venv/bin/python -m pytest -q        # expect 78 passed
+timeout 600 .venv/bin/python -m pytest -q        # expect 86 passed
 timeout 30  .venv/bin/python -c "import cv2, torch; print(cv2.__version__, torch.__version__)"
 timeout 30  .venv/bin/pip check
 timeout 30  docker compose config
@@ -138,7 +138,7 @@ If a change would break any of these, fix the seam first, then make the change.
 - **Licensing:** Ultralytics is AGPL-3.0; revisit ADR-002 before commercial/network use.
 - **Known warning:** pytest shows one upstream Starlette/AnyIO deprecation warning; it is
   non-blocking and should be revisited during a coordinated FastAPI/Starlette upgrade.
-- **Git:** no commit was created because the user did not explicitly request one.
+- **Git:** work is committed on `main`. New UI: `cd frontend-app && npm ci && npm run build` (served at `/app`), `npm run dev` for hot reload, `npm test`.
 
 ---
 

@@ -29,3 +29,7 @@ data/*.sqlite3
 .vscode/
 data/*.pid
 .kiro/
+
+# Frontend app
+frontend-app/node_modules/
+frontend-app/dist/

@@ -227,6 +227,12 @@ def create_app() -> FastAPI:
             return HTMLResponse(index.read_text(encoding="utf-8"))
         return HTMLResponse("<h1>GuardLens</h1><p>Dashboard not found.</p>", status_code=404)
 
+    # New React dashboard (built from frontend-app/). Absent in a bare checkout: the classic
+    # dashboard at "/" keeps working until the build exists.
+    ui_dist = ROOT / "frontend-app" / "dist"
+    if (ui_dist / "index.html").exists():
+        app.mount("/app", StaticFiles(directory=str(ui_dist), html=True), name="app")
+
     return app
 
 

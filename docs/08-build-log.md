@@ -390,3 +390,34 @@ No commit was created because the user did not explicitly request one.
   scoped the broad `person-watch` rule to a single camera to stop the flood.
 - `.env`, `data/tls/`, `*.key`, `data/*.pid`, and `.kiro/` are gitignored; no key is in
   any committable file (verified with `git grep`).
+
+---
+
+## Post-2.0 roadmap (docs/13) — Step 0 + M1a/M1b checkpoint
+
+**Decisions (2026-10-12):** M1 first; React/Vite (ADR-015); agents suggest-only; free cloud
+tiers only for now; no duplicated code (single schema module, later a single VLM client).
+DB had no duplicate cameras left (already cleaned earlier), so no cleanup was needed.
+
+**Built**
+- Fixed `EventStore.delete_evidence` (missing `select` import silently kept unshared clips on
+  disk) + regression test.
+- `guardlens/schema.py`: one field-schema vocabulary. Normalizes every legacy dialect
+  (`float`/`number`, `list[str]`/`array`, `HH:MM`, `point`, enum `values`) into canonical
+  fields (label, help, unit, min/max/step, enum choices, widget hint) and validates values.
+  Rule/notifier type listings now include `label`, `description`, `fields`; the raw
+  `param_schema` is unchanged for back-compat. Built-in rules got labels/help/ranges.
+- Server-side validation of rule `params` and notifier config (readable per-field 422s).
+- `GET /api/meta` (version, class vocabulary, capabilities, plugin keys); `cors_origins` config.
+- `frontend-app/` (Vite + React + TS, pinned deps): typed `api.ts` with single `API_BASE`,
+  generic `SchemaForm` (toggle, slider, stepper, chips + class picker, time, enum, key/value,
+  click-to-place point/line/polygon canvas — no JSON anywhere), Rules page (create/edit/
+  enable/delete), Health page (plain-language camera states). Served at `/app`; classic
+  dashboard remains at `/`. Dockerfile gained a Node build stage.
+
+**Verification:** 86 pytest + 5 vitest pass; `tsc --noEmit` clean; production build served
+and smoke-tested on a temp server (`/app/`, `/api/meta`, `/api/rules/types`).
+**Not yet verified:** visual/browser check of the new UI (no browser in the sandbox).
+
+**Remaining M1c:** Live grid/focus, Events (inline snapshot/clip, filters), Cameras wizard,
+zones on camera frame, Faces, Notifiers, Recording, Reports; parity checklist → switch `/`.

@@ -80,3 +80,14 @@ def test_meta_endpoint_describes_capabilities():
         assert meta["name"] == "GuardLens" and "person" in meta["object_classes"]
         assert "crowd" in meta["plugins"]["rules"] and "webhook" in meta["plugins"]["notifiers"]
         assert set(meta["capabilities"]) >= {"vlm", "recording", "analysis", "https"}
+
+
+def test_react_app_is_served_when_built():
+    import pytest
+    from guardlens.config import ROOT
+    if not (ROOT / "frontend-app" / "dist" / "index.html").exists():
+        pytest.skip("frontend-app not built")
+    with TestClient(app) as client:
+        page = client.get("/app/")
+        assert page.status_code == 200 and '<div id="root">' in page.text
+        assert client.get("/").status_code == 200  # classic dashboard still served
