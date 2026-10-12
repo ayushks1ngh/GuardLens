@@ -62,6 +62,8 @@ Read these in order:
 | [`docs/09-session-recovery.md`](docs/09-session-recovery.md) | **Start here when resuming** — current status and how to pick up where we left off |
 | [`docs/10-improvement-plan.md`](docs/10-improvement-plan.md) | Proposed multi-device camera, recording, and hand/sign roadmap |
 | [`docs/11-roadmap-ux-hosting-agents.md`](docs/11-roadmap-ux-hosting-agents.md) | Planning: UX overhaul, hosting (Vercel/tunnel), agent ideas, accuracy backlog |
+| [`docs/12-agents-research.md`](docs/12-agents-research.md) | Research: market agent patterns, models/costs, agent catalogue + architecture |
+| [`docs/13-build-roadmap.md`](docs/13-build-roadmap.md) | Post-2.0 build plan M1–M6 with acceptance gates |
 
 ## Quick principles
 
