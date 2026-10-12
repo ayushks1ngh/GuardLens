@@ -55,6 +55,8 @@ def _draft(key: str, cfg: RuleConfig, matched: list[Detection], **metadata) -> E
             "count": len(matched),
             "classes": sorted({d.class_name for d in matched}),
             "track_ids": [d.track_id for d in matched if d.track_id is not None],
+            # Normalized boxes (up to 5) so evidence crops can be indexed/searched later.
+            "boxes": [{"class": d.class_name, "bbox": [round(float(v), 4) for v in d.bbox]} for d in matched[:5]],
             **metadata,
         },
     )

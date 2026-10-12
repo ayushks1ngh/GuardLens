@@ -1,5 +1,6 @@
 from guardlens.events.models import (  # noqa: F401
     AgentRun,
+    EventEmbedding,
     ActivityLog,
     Camera,
     Event,

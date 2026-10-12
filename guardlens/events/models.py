@@ -10,7 +10,7 @@ from datetime import date as date_type
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import Column, Index
+from sqlalchemy import Column, Index, LargeBinary
 from sqlalchemy import JSON as SA_JSON
 from sqlmodel import Field, SQLModel, create_engine
 
@@ -118,6 +118,18 @@ class ActivityLog(SQLModel, table=True):
     camera_id: int = Field(foreign_key="camera.id", index=True)
     timestamp: datetime = Field(default_factory=utcnow, index=True)
     summary: dict[str, Any] = Field(default_factory=dict, sa_column=Column(SA_JSON))
+
+
+class EventEmbedding(SQLModel, table=True):
+    """Image embeddings of an event's snapshot (kind=frame) or object crops (kind=crop)."""
+    __table_args__ = (Index("ix_embedding_event", "event_id"),)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: int = Field(foreign_key="event.id")
+    kind: str = "frame"
+    model: str = ""
+    dim: int = 0
+    vector: bytes = Field(default=b"", sa_column=Column(LargeBinary))
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class AgentRun(SQLModel, table=True):
