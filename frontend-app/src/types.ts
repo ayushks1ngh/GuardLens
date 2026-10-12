@@ -40,3 +40,29 @@ export interface Meta {
 }
 
 export interface FieldError { field: string; message: string }
+
+// --- Zones / Faces / Notifiers / Recording / Reports (M1c) ---
+export interface ZoneRow { id: number; camera_id: number; name: string; polygon: [number, number][] }
+
+export interface PersonRow { id: number; name: string; watchlist: boolean; notes?: string | null; image_count: number }
+export type FacePolicy = "label_only" | "alert_unknown" | "alert_watchlist";
+
+export type Severity = "info" | "warning" | "critical";
+export interface NotifierRow {
+  id: number; type: string; enabled: boolean; min_severity: Severity;
+  config: { endpoint?: string | null; configured_keys?: string[] };
+}
+export interface NotifierType { key: string; label: string; fields: Field[] }
+
+export interface RecordingStatus {
+  enabled: boolean; mode: string; active: Record<string, string>; errors: Record<string, string>; clips: number;
+}
+export interface RecordingResponse { config: Values; status: RecordingStatus }
+
+export interface ReportRow { id: number; date: string; generated_at: string; generator: string; content: Values; text: string }
+export interface ActivityRow { id: number; camera_id: number; timestamp: string; summary: Values }
+export interface TimelinePoint { bucket: string; count: number }
+export interface CameraCount { camera_id: number; count: number }
+export interface AnalyticsSummary {
+  total: number; by_type: Record<string, number>; by_severity: Record<string, number>; by_status: Record<string, number>;
+}
