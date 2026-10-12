@@ -120,6 +120,19 @@ class ActivityLog(SQLModel, table=True):
     summary: dict[str, Any] = Field(default_factory=dict, sa_column=Column(SA_JSON))
 
 
+class AgentRun(SQLModel, table=True):
+    """Audit log: every agent execution, whether it annotated, skipped, or failed."""
+    __table_args__ = (Index("ix_agentrun_agent_started", "agent_key", "started_at"),)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    agent_key: str = Field(index=True)
+    trigger: str  # event | schedule | on_demand
+    event_id: Optional[int] = Field(default=None, index=True)
+    status: str  # ok | skipped | budget | unavailable | error
+    started_at: datetime = Field(default_factory=utcnow)
+    duration_ms: int = 0
+    detail: dict[str, Any] = Field(default_factory=dict, sa_column=Column(SA_JSON))
+
+
 class Report(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     date: date_type = Field(index=True)

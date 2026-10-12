@@ -68,6 +68,23 @@ async def lifespan(app: FastAPI):
     if pruned:
         logger.info("Pruned %s expired activity rows", pruned)
 
+    # Shared AI client, privacy settings, scheduler and agents.
+    from guardlens.agents import agent_runner
+    from guardlens.api.privacy import load_privacy
+    from guardlens.events.store import event_store as _event_store
+    from guardlens.scheduler import scheduler
+    from guardlens.vlm_client import vlm_client
+    vlm_client.configure(cfg.vlm)
+    load_privacy()
+    agent_runner.reload()
+    _event_store.add_listener(agent_runner.on_event)
+    scheduler.add_job("activity-retention", lambda: prune_activity(cfg.reporting.retention_days), every=3600)
+    scheduler.add_job("clip-retention", lambda: __import__("guardlens.recording", fromlist=["clip_recorder"]).clip_recorder.prune(), every=3600)
+    scheduler.add_job("nightly-report", lambda: __import__("guardlens.api.reporting", fromlist=["_generate"])._generate(
+        __import__("datetime").datetime.now(__import__("datetime").timezone.utc).date(), force=True), daily_at="23:55")
+    agent_runner.attach_scheduler(scheduler)
+    scheduler.start()
+
     # Start capture workers for enabled cameras.
     manager.start_all()
     logger.info("Camera workers started: %s", manager.status())
@@ -87,6 +104,11 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("GuardLens shutting down...")
+    try:
+        scheduler.stop()
+        _event_store.remove_listener(agent_runner.on_event)
+    except Exception:
+        logger.exception("error stopping scheduler")
     try:
         from guardlens.analysis.pipeline import analysis_manager
         analysis_manager.stop_all()
@@ -132,17 +154,21 @@ def create_app() -> FastAPI:
         return response
 
     # Routers
+    from guardlens.api.agents import router as agents_router
     from guardlens.api.cameras import router as cameras_router
     from guardlens.api.events import router as events_router
     from guardlens.api.faces import router as faces_router
     from guardlens.api.operations import router as operations_router
     from guardlens.api.pairing import router as pairing_router
+    from guardlens.api.privacy import router as privacy_router
     from guardlens.api.recording import router as recording_router
     from guardlens.api.reporting import router as reporting_router
     from guardlens.api.rules import router as rules_router
     from guardlens.api.stream import router as stream_router
     from guardlens.api.vision import router as vision_router
 
+    app.include_router(agents_router)
+    app.include_router(privacy_router)
     app.include_router(cameras_router)
     app.include_router(events_router)
     app.include_router(faces_router)
@@ -192,7 +218,7 @@ def create_app() -> FastAPI:
             "version": __version__,
             "object_classes": COCO_CLASSES,
             "capabilities": {
-                "vlm": bool(os.environ.get("GUARDLENS_NVIDIA_API_KEY")),
+                "vlm": __import__("guardlens.vlm_client", fromlist=["vlm_client"]).vlm_client.available,
                 "recording": bool(getattr(getattr(cfg, "recording", None), "enabled", False)),
                 "analysis": bool(getattr(cfg, "analysis_enabled", False)),
                 "https": bool(getattr(cfg, "ssl_certfile", "")),
@@ -201,6 +227,7 @@ def create_app() -> FastAPI:
                 "detectors": [d.get("key") for d in getattr(cfg, "detectors", [])],
                 "rules": [r["key"] for r in rule_types()],
                 "notifiers": [n["key"] for n in notifier_types()],
+                "agents": [a["key"] for a in __import__("guardlens.agents", fromlist=["agent_types"]).agent_types()],
             },
         }
 

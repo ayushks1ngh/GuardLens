@@ -59,6 +59,9 @@ class Config(BaseModel):
     rules: list[dict[str, Any]] = Field(default_factory=list)
     notifiers: list[dict[str, Any]] = Field(default_factory=list)
 
+    # AI provider chain / budgets (see guardlens/vlm_client.py); keys come from the environment.
+    vlm: dict[str, Any] = Field(default_factory=dict)
+
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     recording: RecordingConfig = Field(default_factory=RecordingConfig)
 

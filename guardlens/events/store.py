@@ -41,6 +41,41 @@ class EventStore:
     def __init__(self):
         self._snapshots_dir = Path("data/snapshots")
         self._lock = threading.Lock()
+        self._listeners: list = []
+
+    def add_listener(self, listener) -> None:
+        """Subscribe ``listener(payload: dict)`` to every newly persisted event.
+
+        Listeners run after the DB write, outside the store lock; a failing listener is
+        logged and never affects persistence or other listeners.
+        """
+        if listener not in self._listeners:
+            self._listeners.append(listener)
+
+    def remove_listener(self, listener) -> None:
+        if listener in self._listeners:
+            self._listeners.remove(listener)
+
+    def annotate(self, event_id: int, key: str, data: dict) -> Optional[dict]:
+        """Attach ``data`` under ``event_metadata["agent"][key]`` and announce the change.
+
+        Returns the updated public payload, or None if the event no longer exists.
+        """
+        with self._lock, Session(get_engine()) as session:
+            event = session.get(Event, event_id)
+            if event is None:
+                return None
+            metadata = dict(event.event_metadata or {})
+            agent_block = dict(metadata.get("agent") or {})
+            agent_block[key] = data
+            metadata["agent"] = agent_block
+            event.event_metadata = metadata  # new dict: SQLAlchemy JSON does not track in-place edits
+            session.add(event)
+            session.commit()
+            session.refresh(event)
+            payload = event.model_dump(mode="json")
+        event_bus.publish({**payload, "kind": "event.updated"})
+        return payload
 
     def configure(self, snapshots_dir: Path) -> None:
         self._snapshots_dir = Path(snapshots_dir)
@@ -107,6 +142,11 @@ class EventStore:
             dispatcher.dispatch(payload)
         except Exception:
             logger.exception("notifier dispatch setup failed; event remains persisted")
+        for listener in list(self._listeners):
+            try:
+                listener(payload)
+            except Exception:
+                logger.exception("event listener %r failed", listener)
         return event
 
     def delete_evidence(self, event: Event) -> None:
@@ -137,7 +177,8 @@ async def event_stream(last_sequence: int = 0):
         if items:
             for item in items:
                 sequence = item["sequence"]
-                yield f"id: {sequence}\ndata: {__import__('json').dumps(item)}\n\n"
+                name = "event: event_updated\n" if item.get("kind") == "event.updated" else ""
+                yield f"id: {sequence}\n{name}data: {__import__('json').dumps(item)}\n\n"
         else:
             yield ": heartbeat\n\n"
         await asyncio.sleep(0.5)

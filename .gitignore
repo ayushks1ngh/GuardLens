@@ -33,3 +33,4 @@ data/*.pid
 # Frontend app
 frontend-app/node_modules/
 frontend-app/dist/
+.claude/worktrees/
