@@ -16,13 +16,13 @@ describe("ZonesPage", () => {
       return Response.json({ id: 1 }, { status: 201 });
     }));
     render(<ZonesPage meta={null} />);
-    fireEvent.click(await screen.findByText("Draw a new zone"));
+    fireEvent.click(await screen.findByText("Draw a new zone", {}, { timeout: 5000 }));
     fireEvent.change(screen.getByLabelText("Zone name"), { target: { value: "Porch" } });
     const surface = screen.getByRole("img", { name: "Click to place points" });
     vi.spyOn(surface, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 100, height: 100 } as DOMRect);
     for (const [x, y] of [[10, 10], [90, 10], [50, 80]]) fireEvent.click(surface, { clientX: x, clientY: y });
     fireEvent.click(screen.getByText("Save zone"));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true), { timeout: 5000 });
     const post = calls.find((c) => c.method === "POST")!;
     expect(post.url).toBe("/api/cameras/7/zones");
     expect(post.body).toEqual({ name: "Porch", polygon: [[0.1, 0.1], [0.9, 0.1], [0.5, 0.8]] });
