@@ -100,7 +100,7 @@ def run_ai_steps(http, cid, events) -> None:
     step("AI briefing written or falls back safely", "daily briefing" in rep["text"], str(rep["content"].get("fallback") or "AI narrative"))
     if rep["content"].get("narrative"):
         cited = {int(i) for i in re.findall(r"\[E(\d+)\]", rep["content"]["narrative"])}
-        listed = {e["id"] for e in http.get(f"{BASE}/api/events", params={"limit": 500}).json()["items"]}
+        listed = {e["id"] for e in http.get(f"{BASE}/api/events", params={"limit": 200}).json()["items"]}
         step("briefing cites only real alerts", cited <= listed, str(sorted(cited))[:60])
 
 
