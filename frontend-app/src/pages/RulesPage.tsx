@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
 import { SchemaForm, defaultValues } from "../components/SchemaForm";
-import type { Camera, FieldError, Meta, PluginType, RuleRow, Values } from "../types";
+import { useSnapshot } from "../lib/snapshot";
+import type { Camera, FieldError, Meta, PluginType, RuleRow, Values, ZoneRow } from "../types";
 
 const SEVERITIES = [
   { value: "info", label: "Info" }, { value: "warning", label: "Warning" }, { value: "critical", label: "Critical" },
 ] as const;
 
 interface Draft {
-  id?: number; type: string; name: string; camera_id: number | null;
+  id?: number; type: string; name: string; camera_id: number | null; zone_id?: number | null;
   severity: RuleRow["severity"]; cooldown_seconds: number; params: Values;
 }
 
@@ -19,6 +20,13 @@ export function RulesPage({ meta }: { meta: Meta | null }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [message, setMessage] = useState("");
+  const [zones, setZones] = useState<ZoneRow[]>([]);
+  const draftCamera = draft?.camera_id ?? null;
+  const snapshot = useSnapshot(draft ? draftCamera : null);
+  useEffect(() => {
+    if (draftCamera === null) { setZones([]); return; }
+    api<ZoneRow[]>(`/api/cameras/${draftCamera}/zones`).then(setZones).catch(() => setZones([]));
+  }, [draftCamera]);
 
   const load = useCallback(async () => {
     const [t, c, r] = await Promise.all([
@@ -46,7 +54,7 @@ export function RulesPage({ meta }: { meta: Meta | null }) {
     setErrors([]); setMessage("");
     const { id, ...body } = draft;
     try {
-      if (id) await api(`/api/rules/${id}`, { method: "PATCH", json: { name: body.name, camera_id: body.camera_id, severity: body.severity, cooldown_seconds: body.cooldown_seconds, params: body.params } });
+      if (id) await api(`/api/rules/${id}`, { method: "PATCH", json: { name: body.name, camera_id: body.camera_id, zone_id: body.zone_id ?? null, severity: body.severity, cooldown_seconds: body.cooldown_seconds, params: body.params } });
       else await api("/api/rules", { method: "POST", json: body });
       setDraft(null); await load();
     } catch (e) {
@@ -83,10 +91,18 @@ export function RulesPage({ meta }: { meta: Meta | null }) {
             <div className="field"><label htmlFor="rule-name">Name</label>
               <input id="rule-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></div>
             <div className="field"><label htmlFor="rule-camera">Applies to</label>
-              <select id="rule-camera" value={draft.camera_id ?? ""} onChange={(e) => setDraft({ ...draft, camera_id: e.target.value ? Number(e.target.value) : null })}>
+              <select id="rule-camera" value={draft.camera_id ?? ""} onChange={(e) => setDraft({ ...draft, camera_id: e.target.value ? Number(e.target.value) : null, zone_id: null })}>
                 <option value="">All cameras</option>
                 {cameras.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select></div>
+            {draft.camera_id !== null && (
+              <div className="field"><label htmlFor="rule-zone">Watch area</label>
+                <select id="rule-zone" value={draft.zone_id ?? ""} onChange={(e) => setDraft({ ...draft, zone_id: e.target.value ? Number(e.target.value) : null })}>
+                  <option value="">Whole picture</option>
+                  {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+                </select>
+                <p className="hint">{zones.length ? "Only this part of the picture triggers the rule." : "No zones drawn for this camera yet. Add them on the Zones page."}</p></div>
+            )}
             <div className="field"><label htmlFor="rule-severity">How serious</label>
               <select id="rule-severity" value={draft.severity} onChange={(e) => setDraft({ ...draft, severity: e.target.value as Draft["severity"] })}>
                 {SEVERITIES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -98,7 +114,7 @@ export function RulesPage({ meta }: { meta: Meta | null }) {
               <p className="hint">After an alert, stay quiet this long to avoid floods.</p></div>
           </div>
           <SchemaForm fields={activeType.fields} values={draft.params} errors={errors}
-            objectClasses={meta?.object_classes} onChange={(params) => setDraft({ ...draft, params })} />
+            objectClasses={meta?.object_classes} background={snapshot.url} onChange={(params) => setDraft({ ...draft, params })} />
           {message && <p className="error" role="alert">{message}</p>}
           <div className="actions">
             <button type="button" className="primary" onClick={save}>Save rule</button>
