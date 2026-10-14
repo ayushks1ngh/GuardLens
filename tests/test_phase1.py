@@ -127,3 +127,15 @@ def test_bad_source_does_not_crash():
         assert frame is None
     finally:
         w.stop()
+
+
+def test_open_failures_explain_what_to_do():
+    from guardlens.capture.sources import create_source
+    net = create_source("opencv", {"mode": "network", "url": "http://user:pw@10.255.254.1:9/video", "timeout_ms": 250})
+    assert net.open() is False
+    assert "could not reach 10.255.254.1:9" in net.status.error and "pw" not in net.status.error
+    dev = create_source("opencv", {"mode": "device", "device_index": 97})
+    assert dev.open() is False
+    assert "/dev/video97 does not exist" in dev.status.error
+    gone = create_source("opencv", {"mode": "file", "path": "/nonexistent/clip.mp4"})
+    assert gone.open() is False and "not found" in gone.status.error

@@ -124,6 +124,23 @@ class OpenCvSource(CameraSource):
     def is_file(self) -> bool:
         return self._mode == "file"
 
+    def _open_hint(self) -> str:
+        """Plain-language next step for the most common reasons a camera will not open."""
+        if self._mode == "device" and sys.platform.startswith("linux"):
+            if not Path(f"/dev/video{self._value}").exists():
+                wsl = "microsoft" in Path("/proc/version").read_text(errors="ignore").lower() if Path("/proc/version").exists() else False
+                if wsl:
+                    return (f" — /dev/video{self._value} does not exist. WSL2 cannot see USB/laptop webcams; "
+                            "use a phone or browser camera (Add a camera > Phone) or attach the webcam with usbipd")
+                return f" — /dev/video{self._value} does not exist; check that the camera is plugged in"
+            return " — the device exists but could not be opened; another program may be using it, or you may lack permission (video group)"
+        if self._mode == "network":
+            host = urlsplit(str(self._value)).netloc.rpartition("@")[2] or "the address"
+            return f" — could not reach {host}; check the address, that the camera/app is running, and that both are on the same network"
+        if self._mode == "file":
+            return " — the file was not found or is not a video"
+        return ""
+
     def open(self) -> bool:
         self.close()
         timeout = self.config["timeout_ms"]
@@ -152,7 +169,7 @@ class OpenCvSource(CameraSource):
 
         if not self._capture.isOpened():
             self.status.opened = False
-            self.status.error = f"could not open {self.display_source!r}"
+            self.status.error = f"could not open {self.display_source!r}" + self._open_hint()
             self.close()
             return False
         self.status.opened = True
