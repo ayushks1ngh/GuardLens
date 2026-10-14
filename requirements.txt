@@ -1,7 +1,7 @@
 # --- Web framework ---
 fastapi==0.143.1
-# Starlette pinned directly: 1.0.1 fixes advisories for Host-header handling, multipart uploads and Range requests.
-starlette==1.0.1
+# Starlette pinned directly: 1.3.1 contains the fixes for every advisory known on 2026-10-14 (Host header, multipart uploads, Range requests, others).
+starlette==1.3.1
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pyyaml==6.0.2
