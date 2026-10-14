@@ -92,6 +92,8 @@ describe("SecurityPage", () => {
     fireEvent.change(screen.getByLabelText("Token name"), { target: { value: "script" } });
     fireEvent.click(screen.getByRole("button", { name: "Create token" }));
     expect(((await screen.findByLabelText("New token")) as HTMLInputElement).value).toBe("tok_secret");
+    const created = calls.find((c) => c.url === "/api/auth/tokens" && c.method === "POST")!;
+    expect(JSON.parse(created.body!)).toEqual({ name: "script", scope: "read", expires_days: 90 });  // safe defaults: read-only, 90 days
     expect(screen.getByText(/You won’t see this again/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Turn login off" }));
     expect(screen.getByText(/Without login/)).toBeTruthy();

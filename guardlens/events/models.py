@@ -96,6 +96,16 @@ class FaceImage(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class AuditLog(SQLModel, table=True):
+    """Who did what to the account and its access (sign-ins, failures, tokens, login on/off). Pruned after 180 days."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    at: datetime = Field(default_factory=utcnow, index=True)
+    kind: str = Field(index=True)  # setup | login_ok | login_failed | logout | password_changed | token_created | token_deleted | login_toggled
+    username: Optional[str] = None
+    ip: Optional[str] = None
+    detail: str = ""
+
+
 class NotifierConfig(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     type: str
@@ -156,6 +166,8 @@ class ApiToken(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
     last_used_at: Optional[datetime] = None
+    scope: str = Field(default="full")  # "read" tokens may only use GET/HEAD; "full" can do everything the user can
+    expires_at: Optional[datetime] = None  # None = never expires
 
 
 class AgentRun(SQLModel, table=True):

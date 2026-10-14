@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError } from "../api";
-import { AUTH_CHANGED_EVENT, bearerExample, tokenUsedText, type ApiToken, type AuthStatus } from "../lib/auth";
+import { AUTH_CHANGED_EVENT, EXPIRY_CHOICES, auditText, bearerExample, tokenExpiryText, tokenScopeText, tokenUsedText, type ApiToken, type AuditRow, type AuthStatus } from "../lib/auth";
 import { AuthForm } from "../components/AuthScreens";
 import type { Meta } from "../types";
 
@@ -11,13 +11,19 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
   const [next, setNext] = useState("");
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [tokenName, setTokenName] = useState("");
+  const [tokenScope, setTokenScope] = useState<"read" | "full">("read");
+  const [tokenDays, setTokenDays] = useState("90");
+  const [audit, setAudit] = useState<AuditRow[]>([]);
   const [fresh, setFresh] = useState<{ name: string; token: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [confirmOff, setConfirmOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadTokens = useCallback(() => api<ApiToken[]>("/api/auth/tokens").then(setTokens).catch(() => undefined), []);
+  const loadTokens = useCallback(() => {
+    api<AuditRow[]>("/api/auth/audit?limit=15").then((rows) => setAudit(Array.isArray(rows) ? rows : [])).catch(() => undefined);
+    return api<ApiToken[]>("/api/auth/tokens").then(setTokens).catch(() => undefined);
+  }, []);
   const loadStatus = useCallback(() => {
     api<AuthStatus>("/api/auth/status").then((st) => {
       setStatus(st);
@@ -59,7 +65,7 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
     if (!name) return;
     setError(null); setCopied(false);
     try {
-      const res = await api<{ id: number; name: string; token: string }>("/api/auth/tokens", { method: "POST", json: { name } });
+      const res = await api<{ id: number; name: string; token: string }>("/api/auth/tokens", { method: "POST", json: { name, scope: tokenScope, expires_days: tokenDays ? Number(tokenDays) : null } });
       setFresh({ name: res.name, token: res.token });
       setTokenName("");
       loadTokens();
@@ -146,7 +152,7 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
           <ul className="list">
             {tokens.map((t) => (
               <li key={t.id} className="row">
-                <div className="grow"><strong>{t.name}</strong><div className="hint">{tokenUsedText(t)}</div></div>
+                <div className="grow"><strong>{t.name}</strong><div className="hint">{tokenScopeText(t)} · {tokenExpiryText(t)} · {tokenUsedText(t)}</div></div>
                 {confirmDelete === t.id ? (
                   <>
                     <span>Delete this token? Apps using it will stop working.</span>
@@ -162,8 +168,35 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
           <label htmlFor="sec-token-name" className="sr-only">Token name</label>
           <input id="sec-token-name" className="grow" placeholder="What is it for? (e.g. Home Assistant)" value={tokenName}
             maxLength={60} onChange={(e) => setTokenName(e.target.value)} />
+          <label htmlFor="sec-token-scope" className="sr-only">What the token may do</label>
+          <select id="sec-token-scope" value={tokenScope} onChange={(e) => setTokenScope(e.target.value as "read" | "full")}>
+            <option value="read">Read-only</option>
+            <option value="full">Full access</option>
+          </select>
+          <label htmlFor="sec-token-days" className="sr-only">When the token expires</label>
+          <select id="sec-token-days" value={tokenDays} onChange={(e) => setTokenDays(e.target.value)}>
+            {EXPIRY_CHOICES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
           <button type="submit" className="primary" disabled={!tokenName.trim()}>Create token</button>
         </form>
+        <p className="hint">Prefer read-only for dashboards and scripts that only look. A token that expires limits the damage if it leaks.</p>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Recent sign-in activity</h3>
+        {audit.length === 0 ? <p className="hint">Nothing recorded yet.</p> : (
+          <ul className="list">
+            {audit.map((r) => (
+              <li key={r.id} className="row">
+                <div className="grow">
+                  <span className={r.kind === "login_failed" ? "error" : undefined}>{auditText(r)}</span>
+                  <div className="hint">{new Date(r.at + "Z").toLocaleString()}{r.ip ? ` · from ${r.ip}` : ""}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="hint">Kept for 180 days. Passwords and tokens are never written here.</p>
       </div>
         </>
       )}

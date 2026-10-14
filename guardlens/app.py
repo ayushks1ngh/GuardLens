@@ -93,6 +93,7 @@ async def lifespan(app: FastAPI):
     _event_store.add_listener(search_service.on_event)
     scheduler.add_job("activity-retention", lambda: prune_activity(cfg.reporting.retention_days), every=3600)
     from guardlens import maintenance as _maintenance
+    scheduler.add_job("audit-retention", _auth.prune_audit, every=86400)
     scheduler.add_job("db-backup", lambda: _maintenance.nightly_backup(cfg), daily_at=cfg.backup.daily_at)
     scheduler.add_job("event-retention", lambda: _maintenance.prune_events(cfg), every=3600)
     scheduler.add_job("clip-retention", lambda: __import__("guardlens.recording", fromlist=["clip_recorder"]).clip_recorder.prune(), every=3600)
@@ -166,9 +167,12 @@ def create_app() -> FastAPI:
                                            "that runs it (Settings > Security) before using a tunnel or shared address."},
                                 status_code=403)
         if _auth.auth_state.enabled and not _auth.is_public(request.url.path, request.method):
-            user = await __import__("asyncio").to_thread(_auth.authenticate, request.headers, request.cookies)
-            if user is None:
+            found = await __import__("asyncio").to_thread(_auth.identify, request.headers, request.cookies)
+            if found is None:
                 return JSONResponse({"detail": "login required"}, status_code=401)
+            user, scope = found
+            if scope == "read" and request.method not in _auth.SAFE_METHODS:
+                return JSONResponse({"detail": "This token is read-only: it can look but not change anything."}, status_code=403)
             request.state.user = user
         return await call_next(request)
 

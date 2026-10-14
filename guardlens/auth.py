@@ -23,7 +23,7 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
-from guardlens.events import ApiToken, AuthSession, Setting, User, get_engine, utcnow
+from guardlens.events import ApiToken, AuditLog, AuthSession, Setting, User, get_engine, utcnow
 
 COOKIE = "gl_session"
 SESSION_DAYS = 14
@@ -100,7 +100,8 @@ class LoginLimiter:
 class AuthState:
     def __init__(self) -> None:
         self._enabled = False
-        self.limiter = LoginLimiter()
+        self.limiter = LoginLimiter()                                  # per client address: 5 failures / minute
+        self.account_limiter = LoginLimiter(limit=10, window=300.0)    # per account name: 10 failures / 5 minutes, from anywhere
 
     def load(self) -> None:
         with Session(get_engine()) as session:
@@ -164,7 +165,8 @@ def user_from_cookie(token: Optional[str]) -> Optional[User]:
         return session.get(User, row.user_id)
 
 
-def user_from_bearer(header: Optional[str]) -> Optional[User]:
+def _bearer(header: Optional[str]) -> Optional[tuple[User, str]]:
+    """(user, scope) for a valid, unexpired bearer token; None otherwise."""
     if not header or not header.lower().startswith("bearer "):
         return None
     token = header[7:].strip()
@@ -172,14 +174,67 @@ def user_from_bearer(header: Optional[str]) -> Optional[User]:
         row = session.exec(select(ApiToken).where(ApiToken.token_hash == token_hash(token))).first()
         if row is None:
             return None
+        if row.expires_at is not None and row.expires_at.replace(tzinfo=None) < utcnow().replace(tzinfo=None):
+            return None  # expired (kept in the list so it can be seen and deleted)
         row.last_used_at = utcnow()
         session.add(row); session.commit()
-        return session.get(User, row.user_id)
+        user = session.get(User, row.user_id)
+        return (user, row.scope or "full") if user else None
+
+
+def user_from_bearer(header: Optional[str]) -> Optional[User]:
+    found = _bearer(header)
+    return found[0] if found else None
+
+
+SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
+
+def identify(headers, cookies) -> Optional[tuple[User, str]]:
+    """Who is calling and with what rights: a signed-in browser is "full"; an API token is "read" or "full"."""
+    found = _bearer(headers.get("authorization"))
+    if found:
+        return found
+    user = user_from_cookie(cookies.get(COOKIE))
+    return (user, "full") if user else None
 
 
 def authenticate(headers, cookies) -> Optional[User]:
-    return user_from_bearer(headers.get("authorization")) or user_from_cookie(cookies.get(COOKIE))
+    found = identify(headers, cookies)
+    return found[0] if found else None
 
 
 def client_key(request) -> str:
     return request.client.host if request.client else "unknown"
+
+
+# -- audit log ------------------------------------------------------------------------------------------------------
+AUDIT_KEEP_DAYS = 180
+AUDIT_MAX_ROWS = 10_000
+
+
+def audit(kind: str, *, username: Optional[str] = None, request=None, detail: str = "") -> None:
+    """Record a security-relevant event. Never raises: auditing must not break the action being audited."""
+    try:
+        with Session(get_engine()) as session:
+            session.add(AuditLog(kind=kind, username=(username or None), ip=client_key(request) if request is not None else None,
+                                 detail=detail[:200]))
+            session.commit()
+    except Exception:  # pragma: no cover - logged, not fatal
+        import logging
+        logging.getLogger("guardlens.auth").exception("could not write audit entry %s", kind)
+
+
+def prune_audit(days: int = AUDIT_KEEP_DAYS) -> int:
+    from datetime import timedelta
+    cutoff = utcnow().replace(tzinfo=None) - timedelta(days=days)
+    with Session(get_engine()) as session:
+        old = session.exec(select(AuditLog).where(AuditLog.at < cutoff)).all()
+        for row in old:
+            session.delete(row)
+        removed = len(old)
+        extra = session.exec(select(AuditLog).order_by(AuditLog.at.desc()).offset(AUDIT_MAX_ROWS)).all()  # hard cap
+        for row in extra:
+            session.delete(row)
+        session.commit()
+        return removed + len(extra)

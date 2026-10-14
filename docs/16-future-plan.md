@@ -29,7 +29,7 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 - [x] 3.5 (found during 3.1) Face recognition: the old "who is it" comparison was a 32×32 pixel vector. Replaced by SFace on YuNet-aligned faces (threshold 0.5; measured 98.9% same-person / 0.25% stranger matches, docs/benchmarks/); old enrolments re-embedded automatically; falls back to pixels with a Health warning if the model is missing.
 
 ## Stage 4 — Trust and security
-- [ ] 4.1 Token scopes + expiry, sign-in audit log, per-account rate limits.
+- [x] 4.1 API tokens are read-only or full access and can expire (defaults in the UI: read-only, 90 days; existing tokens stay full/never-expire); read-only tokens are refused on any write and on account/token/audit endpoints; audit log (sign-ins, failures, password/token/login changes; no secrets; 180 days, 10k rows max) shown under Settings → Security; per-account throttle (10 failures / 5 min from any address) on top of the per-address one. Note: the per-account throttle means someone who knows the admin name can make the admin wait; the audit log shows it.
 - [ ] 4.2 Remote access (Tailscale / Cloudflare tunnel) verified end to end.
 - [ ] 4.3 Dependency refresh behind the full suite.
 - Gate: /security-review on the diff with no open findings.

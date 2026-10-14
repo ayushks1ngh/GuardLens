@@ -40,3 +40,13 @@ the same origin (the tunnel URL); a split-origin setup should use API tokens ins
 - Anyone on the same LAN who can reach port 8080 sees only the login screen once login is on.
 - The VLM features send frames to the AI provider you configure unless a camera is marked
   "local only" (Agents → Privacy).
+
+
+## Tokens and the activity log (Settings → Security)
+- **Read-only tokens** can look (GET) but not change anything, and cannot create tokens or read the activity log. Use them
+  for dashboards and scripts that only read. **Full access** tokens can do everything you can. Both can expire (30 days,
+  90 days, 1 year); an expired token stops working immediately and stays listed so you can delete it.
+- **Recent sign-in activity** lists sign-ins, failed attempts (with the address they came from), password changes, token
+  changes and login on/off. Passwords and tokens are never written to it.
+- After 10 wrong passwords for the same account within 5 minutes, that account refuses sign-ins (even the right
+  password) for the rest of the window; 5 wrong passwords from one address block that address for a minute.
