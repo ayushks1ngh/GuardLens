@@ -28,7 +28,7 @@ def main() -> int:
         print("Restore one with: python scripts/restore_backup.py <name>")
         return 0
     name = sys.argv[1]
-    if not maintenance.BACKUP_NAME.match(name) or not (folder / name).is_file():
+    if not maintenance.BACKUP_NAME.fullmatch(name) or not (folder / name).is_file():
         print(f"No such backup: {name}")
         return 1
     check = sqlite3.connect(str(folder / name)).execute("pragma integrity_check").fetchone()[0]

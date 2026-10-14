@@ -2,14 +2,15 @@ import { useState, type FormEvent } from "react";
 import { api, ApiError } from "../api";
 import { credentialProblem, loginErrorText } from "../lib/auth";
 
-export function AuthScreen({ mode, onDone }: { mode: "setup" | "login"; onDone: () => void }) {
-  return <div className="auth-screen"><AuthForm mode={mode} onDone={onDone} /></div>;
+export function AuthScreen({ mode, onDone, setupCodeRequired }: { mode: "setup" | "login"; onDone: () => void; setupCodeRequired?: boolean }) {
+  return <div className="auth-screen"><AuthForm mode={mode} onDone={onDone} setupCodeRequired={setupCodeRequired} /></div>;
 }
 
 /** The sign-in / create-account card, usable full-screen or inline (Security page). */
-export function AuthForm({ mode, onDone }: { mode: "setup" | "login"; onDone: () => void }) {
+export function AuthForm({ mode, onDone, setupCodeRequired }: { mode: "setup" | "login"; onDone: () => void; setupCodeRequired?: boolean }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const setup = mode === "setup";
@@ -23,8 +24,8 @@ export function AuthForm({ mode, onDone }: { mode: "setup" | "login"; onDone: ()
     }
     setBusy(true);
     try {
-      await api(setup ? "/api/auth/setup" : "/api/auth/login", { method: "POST", json: { username: username.trim(), password } });
-      setPassword("");
+      await api(setup ? "/api/auth/setup" : "/api/auth/login", { method: "POST", json: { username: username.trim(), password, ...(setup && setupCodeRequired ? { setup_code: code.trim() } : {}) } });
+      setPassword(""); setCode("");
       onDone();
     } catch (err) {
       if (err instanceof ApiError) setError(setup ? err.fields.map((f) => f.message).join(" ") || err.message : loginErrorText(err.status, err.message));
@@ -47,6 +48,15 @@ export function AuthForm({ mode, onDone }: { mode: "setup" | "login"; onDone: ()
           <label htmlFor="auth-pass">{setup ? "Password (at least 10 characters)" : "Password"}</label>
           <input id="auth-pass" type="password" autoComplete={setup ? "new-password" : "current-password"}
             value={password} onChange={(e) => setPassword(e.target.value)} required />
+          {setup && setupCodeRequired && (
+            <>
+              <label htmlFor="auth-code">Setup code</label>
+              <input id="auth-code" autoComplete="off" autoCapitalize="characters" spellCheck={false} value={code}
+                onChange={(e) => setCode(e.target.value)} placeholder="XXXX-XXXX" required />
+              <p className="hint">You are not on the computer that runs GuardLens, so it asks for a one-time code to be sure it is you.
+                Find it in the terminal (or the log file) where GuardLens runs: look for the line “Setup code”.</p>
+            </>
+          )}
           {error && <p className="error" role="alert">{error}</p>}
           <button type="submit" className="primary" disabled={busy}>{setup ? "Create account" : "Sign in"}</button>
         </form>

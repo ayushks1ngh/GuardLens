@@ -33,6 +33,28 @@ class CaptureBody(BaseModel):
     camera_id: int
 
 
+def peek_dimensions(data: bytes):
+    """(width, height) read from a PNG or JPEG header without decoding it, so a tiny file that declares a gigantic
+    canvas (a decompression bomb) is refused before it can use gigabytes of memory. None for other formats."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) >= 24:
+        return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    if data[:2] == b"\xff\xd8":
+        i = 2
+        while i + 9 < len(data):
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            marker = data[i + 1]
+            if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+                i += 2
+                continue
+            length = int.from_bytes(data[i + 2:i + 4], "big")
+            if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):  # a start-of-frame marker
+                return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+            i += 2 + length
+    return None
+
+
 class PolicyBody(BaseModel):
     policy: Literal["label_only", "alert_unknown", "alert_watchlist"]
 
@@ -95,8 +117,12 @@ def update_person(person_id: int, body: PersonUpdate):
 
 @router.post("/persons/{person_id}/images", status_code=201)
 async def upload_face(person_id: int, image: UploadFile = File(...)):
-    data = await image.read()
-    if len(data) > 10 * 1024 * 1024: raise HTTPException(413, "image exceeds 10 MB")
+    limit = 10 * 1024 * 1024
+    data = await image.read(limit + 1)  # never pull more than the limit into memory
+    if len(data) > limit: raise HTTPException(413, "image exceeds 10 MB")
+    size = peek_dimensions(data)
+    if size and (max(size) > 8000 or size[0] * size[1] > 40_000_000):
+        raise HTTPException(413, f"image dimensions are too large ({size[0]}x{size[1]}); use a photo under 8000 px / 40 megapixels")
     decoded = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
     if decoded is None: raise HTTPException(422, "invalid image")
     return _save_enrollment(person_id, decoded)

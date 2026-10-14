@@ -81,6 +81,9 @@ async def lifespan(app: FastAPI):
     vlm_client.configure(cfg.vlm)
     from guardlens import auth as _auth
     _auth.auth_state.load()
+    if not _auth.auth_state.has_users():
+        logger.warning("Setup code: %s  (needed once to create the first account from another computer; "
+                       "from this computer it is not asked for)", _auth.auth_state.ensure_setup_code())
     if not _auth.auth_state.enabled and cfg.host not in ("127.0.0.1", "localhost", "::1"):
         logger.warning(
             "Login is OFF and GuardLens listens on %s: anyone on this network can watch your cameras. "

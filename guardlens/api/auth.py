@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 class Credentials(BaseModel):
     username: str = Field(max_length=80)
     password: str = Field(max_length=200)
+    setup_code: Optional[str] = Field(default=None, max_length=40)  # only used by first-run setup from another machine
 
 
 class PasswordBody(BaseModel):
@@ -59,22 +60,35 @@ def _set_cookie(request: Request, response: Response, token: str) -> None:
 @router.get("/status")
 def status(request: Request):
     user = _current_user(request)
-    return {"enabled": auth.auth_state.enabled, "needs_setup": not auth.auth_state.has_users(),
-            "authenticated": user is not None, "username": user.username if user else None}
+    needs_setup = not auth.auth_state.has_users()
+    return {"enabled": auth.auth_state.enabled, "needs_setup": needs_setup,
+            "authenticated": user is not None, "username": user.username if user else None,
+            "setup_code_required": bool(needs_setup and auth.setup_code_required(request))}
 
 
 @router.post("/setup", status_code=201)
 def setup(body: Credentials, request: Request, response: Response):
-    if auth.auth_state.has_users():
-        raise HTTPException(409, "An administrator account already exists.")
+    key = auth.client_key(request)
     problems = auth.password_problems(body.username, body.password)
-    if problems:
-        raise HTTPException(422, error_detail(problems))
-    with Session(get_engine()) as session:
-        user = User(username=body.username.strip(), password_hash=auth.hash_password(body.password))
-        session.add(user); session.commit(); session.refresh(user)
-        user_id = user.id
-    auth.auth_state.set_enabled(True)
+    with auth.auth_state.setup_lock:  # two simultaneous requests must not both create an administrator
+        if auth.auth_state.has_users():
+            raise HTTPException(409, "An administrator account already exists.")
+        if auth.setup_code_required(request):
+            if auth.auth_state.limiter.blocked(key):
+                raise HTTPException(429, "Too many attempts. Wait a minute and try again.")
+            if not auth.setup_code_matches(body.setup_code):
+                auth.auth_state.limiter.fail(key)
+                auth.audit("login_failed", request=request, detail="wrong or missing first-run setup code")
+                raise HTTPException(403, "Enter the setup code shown in the terminal or log where GuardLens is running "
+                                         "(look for “Setup code”).")
+        if problems:
+            raise HTTPException(422, error_detail(problems))
+        with Session(get_engine()) as session:
+            user = User(username=body.username.strip(), password_hash=auth.hash_password(body.password))
+            session.add(user); session.commit(); session.refresh(user)
+            user_id = user.id
+        auth.auth_state.set_enabled(True)
+        auth.auth_state.setup_code = None
     auth.audit("setup", username=body.username.strip(), request=request, detail="administrator account created; login turned on")
     _set_cookie(request, response, auth.create_session(user_id))
     return {"username": body.username.strip()}
@@ -83,7 +97,7 @@ def setup(body: Credentials, request: Request, response: Response):
 @router.post("/login")
 def login(body: Credentials, request: Request, response: Response):
     key = auth.client_key(request)
-    account = "acct:" + body.username.strip().lower()
+    account = f"acct:{body.username.strip().lower()}|{key}"  # per name AND address: a stranger cannot lock the owner out
     if auth.auth_state.limiter.blocked(key) or auth.auth_state.account_limiter.blocked(account):
         raise HTTPException(429, "Too many attempts. Wait a few minutes and try again.")
     with Session(get_engine()) as session:
@@ -93,7 +107,9 @@ def login(body: Credentials, request: Request, response: Response):
     if not (auth.verify_password(body.password, stored) and user):
         auth.auth_state.limiter.fail(key)
         auth.auth_state.account_limiter.fail(account)
-        auth.audit("login_failed", username=body.username.strip(), request=request, detail="wrong username or password")
+        # Only a name that exists is recorded: a password typed into the username box must not end up in the log.
+        auth.audit("login_failed", username=user.username if user else None, request=request,
+                   detail="wrong password" if user else "unknown name")
         raise HTTPException(401, "Wrong username or password.")
     auth.auth_state.limiter.reset(key)
     auth.auth_state.account_limiter.reset(account)

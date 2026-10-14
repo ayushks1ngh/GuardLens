@@ -110,7 +110,7 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
       {status?.needs_setup && (
         <>
           <p className="hint">Create the administrator account to protect your cameras. Login turns on as soon as you do, and then every device must sign in.</p>
-          <AuthForm mode="setup" onDone={afterSignIn} />
+          <AuthForm mode="setup" onDone={afterSignIn} setupCodeRequired={status?.setup_code_required} />
         </>
       )}
       {status && !status.needs_setup && !status.authenticated && (

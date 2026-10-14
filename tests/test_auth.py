@@ -51,7 +51,7 @@ def test_limiter_blocks_after_limit_then_resets():
 
 def test_login_is_off_until_setup_and_everything_works_before(client):
     status = client.get("/api/auth/status").json()
-    assert status == {"enabled": False, "needs_setup": True, "authenticated": False, "username": None}
+    assert status == {"enabled": False, "needs_setup": True, "authenticated": False, "username": None, "setup_code_required": False}
     assert client.get("/api/cameras").status_code == 200  # existing local setups keep working
 
 
@@ -152,7 +152,7 @@ def test_dashboard_shell_loads_signed_out_so_the_login_screen_can_show(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": PASSWORD})
     anonymous = TestClient(app)
     assert anonymous.get("/api/auth/status").json() == {
-        "enabled": True, "needs_setup": False, "authenticated": False, "username": None}
+        "enabled": True, "needs_setup": False, "authenticated": False, "username": None, "setup_code_required": False}
     assert anonymous.get("/api/cameras").status_code == 401
     if (ROOT / "frontend-app" / "dist" / "index.html").exists():
         page = anonymous.get("/app/")

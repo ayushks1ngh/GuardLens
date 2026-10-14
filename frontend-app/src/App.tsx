@@ -29,7 +29,7 @@ export function App() {
   const screen = screenFor(auth);
   if (authError) return <div className="auth-screen"><div className="card auth-card"><p className="error" role="alert">Could not reach GuardLens.</p><button type="button" onClick={loadAuth}>Try again</button></div></div>;
   if (screen === "loading") return <div className="auth-screen" role="status">Loading…</div>;
-  if (screen === "setup" || screen === "login") return <ErrorBoundary label="The sign-in screen"><AuthScreen mode={screen} onDone={loadAuth} /></ErrorBoundary>;
+  if (screen === "setup" || screen === "login") return <ErrorBoundary label="The sign-in screen"><AuthScreen mode={screen} onDone={loadAuth} setupCodeRequired={auth?.setup_code_required} /></ErrorBoundary>;
   return <Dashboard auth={auth!} onSignedOut={loadAuth} />;
 }
 

@@ -1,17 +1,24 @@
 """Data safety API: backups, retention, storage use (sign-in protected like the rest of /api)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
-from guardlens import maintenance
+from guardlens import auth, maintenance
 from guardlens.config import load_config
 
-router = APIRouter(prefix="/api/data", tags=["data"])
+def _full_access(request: Request) -> None:
+    """Backups hold password hashes, camera passwords and notifier secrets: a read-only token must not reach them."""
+    problem = auth.full_access_or_open(request.headers, request.cookies)
+    if problem:
+        raise HTTPException(401 if problem == "login required" else 403, problem)
+
+
+router = APIRouter(prefix="/api/data", tags=["data"], dependencies=[Depends(_full_access)])
 
 
 def _named_backup(name: str):
-    if not maintenance.BACKUP_NAME.match(name):  # also blocks path tricks like ../
+    if not maintenance.BACKUP_NAME.fullmatch(name):  # also blocks path tricks like ../
         raise HTTPException(404, "No such backup.")
     path = maintenance.backups_dir(load_config()) / name
     if not path.is_file():

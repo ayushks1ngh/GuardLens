@@ -38,8 +38,13 @@ async def overlay_all():
 @router.websocket("/ws/overlay")
 async def overlay_websocket(websocket: WebSocket):
     """WebSocket fallback for clients that cannot consume SSE."""
+    from guardlens import auth
     from guardlens.streaming.stream import overlay_payload
 
+    # The HTTP login middleware never sees WebSocket connections, so check here (browsers send the session cookie).
+    if auth.auth_state.enabled and await __import__("asyncio").to_thread(auth.identify, websocket.headers, websocket.cookies) is None:
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     try:
         while True:

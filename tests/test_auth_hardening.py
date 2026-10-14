@@ -103,7 +103,7 @@ def test_audit_log_records_the_story_and_never_a_secret(client):
         assert expected in kinds, (expected, kinds)
     assert rows[0]["kind"] == "login_ok"  # newest first
     failed = [r for r in rows if r["kind"] == "login_failed"]
-    assert {r["username"] for r in failed} == {"admin", "ghost"} and all(r["ip"] for r in failed)
+    assert {r["username"] for r in failed} == {"admin", None} and all(r["ip"] for r in failed)  # unknown names are not kept
     created = next(r for r in rows if r["kind"] == "token_created")
     assert "home-assistant" in created["detail"] and "read" in created["detail"] and "90 days" in created["detail"]
     dump = str(rows)

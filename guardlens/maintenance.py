@@ -41,7 +41,7 @@ def describe(path: Path) -> dict:
 
 
 def list_backups(cfg: Config) -> list[dict]:
-    files = [p for p in backups_dir(cfg).iterdir() if BACKUP_NAME.match(p.name)]
+    files = [p for p in backups_dir(cfg).iterdir() if BACKUP_NAME.fullmatch(p.name)]
     return [describe(p) for p in sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)]
 
 

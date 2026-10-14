@@ -29,10 +29,18 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 - [x] 3.5 (found during 3.1) Face recognition: the old "who is it" comparison was a 32×32 pixel vector. Replaced by SFace on YuNet-aligned faces (threshold 0.5; measured 98.9% same-person / 0.25% stranger matches, docs/benchmarks/); old enrolments re-embedded automatically; falls back to pixels with a Health warning if the model is missing.
 
 ## Stage 4 — Trust and security
-- [x] 4.1 API tokens are read-only or full access and can expire (defaults in the UI: read-only, 90 days; existing tokens stay full/never-expire); read-only tokens are refused on any write and on account/token/audit endpoints; audit log (sign-ins, failures, password/token/login changes; no secrets; 180 days, 10k rows max) shown under Settings → Security; per-account throttle (10 failures / 5 min from any address) on top of the per-address one. Note: the per-account throttle means someone who knows the admin name can make the admin wait; the audit log shows it.
+- [x] 4.1 API tokens are read-only or full access and can expire (defaults in the UI: read-only, 90 days; existing tokens stay full/never-expire); read-only tokens are refused on any write and on account/token/audit endpoints; audit log (sign-ins, failures, password/token/login changes; no secrets; 180 days, 10k rows max) shown under Settings → Security; per-account throttle (10 failures / 5 min from any address) on top of the per-address one. (The per-account throttle is keyed by account + address, so a stranger cannot lock the owner out — fixed after review.)
 - [x] 4.2 (partly) Remote access: behaviour behind a proxy is covered by automated tests (see docs/14 table). [ ] 👤 one real tunnel session from outside your network — needs your Tailscale/Cloudflare account.
 - [x] 4.3 Dependency audit + refresh: pip-audit found 6 advisories in python-multipart 0.0.20 (face-photo upload parsing), several in Starlette 0.41.3 (Host header, multipart DoS, Range DoS, more) and 1 in pytest. Upgraded to fastapi 0.143.1 / starlette 1.3.1 / python-multipart 0.0.32 / pytest 9.0.3. (A first pass at starlette 1.0.1 still had 4 open advisories; the re-audit caught it and 1.3.1 fixed them.) All 227 tests, e2e (48/48 with AI) and the browser suite (15/15) pass; `pip-audit -r requirements.txt` reports none. Weekly `audit.yml` keeps checking. Not fixed: `setuptools` in the dev venv (build tool, not shipped); torch CPU wheels cannot be audited via PyPI.
-- Gate: /security-review on the diff with no open findings.
+- Gate: ✅ independent security review of everything since Stage 1 (fresh reviewer, code only). It found 1 high, 2 medium, 5 low issues; all verified by reading/tests and **all fixed**, each with a test that failed before the fix:
+  1. HIGH `/ws/overlay` WebSocket skipped login (the HTTP middleware never sees WebSockets) → now checks login, closes 1008.
+  2. MEDIUM read-only tokens could download the database backup (password hash, camera passwords, notifier secrets) → all `/api/data/*` need full access.
+  3. MEDIUM/LOW anyone could lock the admin out with 10 wrong passwords; unbounded limiter memory → throttle per account+address, empty keys swept, hard cap.
+  4. LOW first-run takeover on a network-reachable server + two simultaneous setups both succeeding → one-time setup code for non-local clients, atomic account creation.
+  5. LOW `/api/client-log`: terminal control characters, global limit silenceable by one address, body size → sanitised, per-address limit, 8 KB cap.
+  6. LOW a password typed into the username box was kept in the audit log → only existing account names are recorded.
+  7. LOW face upload read the whole body and trusted image dimensions → bounded read, PNG/JPEG header dimension check (8000 px / 40 MP).
+  8. INFO camera Test is a TCP probe of the camera's own address (full-access users only) — accepted. Also: backup-name regex now `fullmatch`.
 
 ## Stage 5 — New capabilities (scope decided after Stage 4)
 Response playbooks (human-confirmed), cross-camera re-identification, mobile layout + push notifications.

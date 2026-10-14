@@ -1,4 +1,4 @@
-export interface AuthStatus { enabled: boolean; needs_setup: boolean; authenticated: boolean; username: string | null }
+export interface AuthStatus { enabled: boolean; needs_setup: boolean; authenticated: boolean; username: string | null; setup_code_required?: boolean }
 export interface ApiToken {
   id: number; name: string; created_at: string; last_used_at: string | null;
   scope?: "read" | "full"; expires_at?: string | null; expired?: boolean;

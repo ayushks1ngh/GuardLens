@@ -48,8 +48,17 @@ the same origin (the tunnel URL); a split-origin setup should use API tokens ins
   90 days, 1 year); an expired token stops working immediately and stays listed so you can delete it.
 - **Recent sign-in activity** lists sign-ins, failed attempts (with the address they came from), password changes, token
   changes and login on/off. Passwords and tokens are never written to it.
-- After 10 wrong passwords for the same account within 5 minutes, that account refuses sign-ins (even the right
-  password) for the rest of the window; 5 wrong passwords from one address block that address for a minute.
+- After 10 wrong passwords for the same account **from the same address** within 5 minutes, that address is refused for
+  that account (even with the right password) for the rest of the window, and 5 wrong passwords from one address block that
+  address for a minute. A stranger therefore cannot lock you out from your own address. Behind a tunnel or reverse proxy
+  all visitors can look like one address unless the proxy's address is trusted: start with `--forwarded-allow-ips` (or set
+  `FORWARDED_ALLOW_IPS`) so GuardLens sees the real client address.
+
+## First account from another computer
+Creating the very first account from any machine other than the one running GuardLens (or through a proxy) needs a one-time
+**setup code**. It is printed in the terminal/log where GuardLens starts (`Setup code: XXXX-XXXX`; for the testing launcher
+see `data/testing-server.log`). The dashboard asks for it automatically. Without it, anyone on your network who reached the
+page first could become the administrator. It works once; 5 wrong tries per minute are allowed per address.
 
 
 ## What has been verified for remote access (2026-10-14)

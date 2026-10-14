@@ -73,24 +73,43 @@ def password_problems(username: str, password: str) -> list[dict]:
 class LoginLimiter:
     """At most ``limit`` failed logins per client per window."""
 
-    def __init__(self, limit: int = 5, window: float = 60.0) -> None:
-        self.limit, self.window = limit, window
+    def __init__(self, limit: int = 5, window: float = 60.0, max_keys: int = 10_000) -> None:
+        self.limit, self.window, self.max_keys = limit, window, max_keys
         self._fails: dict[str, deque] = defaultdict(deque)
         self._lock = threading.Lock()
+        self._last_sweep = time.time()
+
+    def _sweep(self, now: float) -> None:
+        """Drop every key whose failures have all aged out (a name tried once and never again would otherwise stay forever)."""
+        if now - self._last_sweep < self.window / 2:
+            return
+        self._last_sweep = now
+        for key in [k for k, q in self._fails.items() if not q or now - q[-1] > self.window]:
+            self._fails.pop(key, None)
 
     def _trim(self, key: str, now: float) -> deque:
         q = self._fails[key]
         while q and now - q[0] > self.window:
             q.popleft()
+        if not q:  # forget names nobody is failing for any more: keys are attacker-chosen, so memory must not grow
+            self._fails.pop(key, None)
+            return deque()
         return q
 
     def blocked(self, key: str) -> bool:
         with self._lock:
-            return len(self._trim(key, time.time())) >= self.limit
+            now = time.time()
+            self._sweep(now)
+            return len(self._trim(key, now)) >= self.limit
 
     def fail(self, key: str) -> None:
         with self._lock:
-            self._trim(key, time.time()).append(time.time())
+            now = time.time()
+            self._sweep(now)
+            self._trim(key, now)
+            if len(self._fails) >= self.max_keys:  # hard cap: drop the oldest key
+                self._fails.pop(next(iter(self._fails)), None)
+            self._fails[key].append(now)
 
     def reset(self, key: str) -> None:
         with self._lock:
@@ -100,6 +119,8 @@ class LoginLimiter:
 class AuthState:
     def __init__(self) -> None:
         self._enabled = False
+        self.setup_code: Optional[str] = None
+        self.setup_lock = threading.Lock()  # account creation is check-then-insert: make it one step
         self.limiter = LoginLimiter()                                  # per client address: 5 failures / minute
         self.account_limiter = LoginLimiter(limit=10, window=300.0)    # per account name: 10 failures / 5 minutes, from anywhere
 
@@ -119,6 +140,14 @@ class AuthState:
             session.add(row)
             session.commit()
         self._enabled = bool(value)
+
+    def ensure_setup_code(self) -> str:
+        """One-time code that proves the person creating the first account can read this server's log/terminal."""
+        if self.setup_code is None:
+            alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O/1/I/L
+            raw = "".join(secrets.choice(alphabet) for _ in range(8))
+            self.setup_code = f"{raw[:4]}-{raw[4:]}"
+        return self.setup_code
 
     @staticmethod
     def has_users() -> bool:
@@ -238,3 +267,31 @@ def prune_audit(days: int = AUDIT_KEEP_DAYS) -> int:
             session.delete(row)
         session.commit()
         return removed + len(extra)
+
+
+def full_access_or_open(headers, cookies) -> Optional[str]:
+    """None when allowed; otherwise a refusal message. With login off everything is open; with login on, read-only tokens
+    may not use the caller (used for endpoints that expose secrets, such as database backups)."""
+    if not auth_state.enabled:
+        return None
+    found = identify(headers, cookies)
+    if found is None:
+        return "login required"
+    return None if found[1] == "full" else "This token is read-only."
+
+
+LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient"}  # "testclient" only ever comes from Starlette's TestClient
+
+
+def setup_code_required(request) -> bool:
+    """First-run account creation from another machine (or through a proxy) needs the code from the server log."""
+    if auth_state.has_users():
+        return False
+    return client_key(request) not in LOOPBACK_HOSTS or arrived_through_proxy(request.headers)
+
+
+def setup_code_matches(given: Optional[str]) -> bool:
+    if not given or auth_state.setup_code is None:
+        return False
+    normal = lambda text: text.replace("-", "").replace(" ", "").strip().upper()
+    return hmac.compare_digest(normal(given).encode(), normal(auth_state.setup_code).encode())
