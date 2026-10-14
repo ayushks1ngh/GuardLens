@@ -57,6 +57,7 @@ class SearchService:
         self._queue: "queue.Queue[int]" = queue.Queue(maxsize=5000)
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
+        self._index_lock = threading.Lock()  # one event is embedded at a time (worker vs reindex vs direct calls)
         self._matrix: Optional[np.ndarray] = None   # cached (n, dim)
         self._owners: list[tuple[int, str]] = []    # (event_id, kind) per matrix row
         self._error = ""
@@ -140,7 +141,7 @@ class SearchService:
     def index_event(self, event_id: int, force: bool = False) -> int:
         """Embed an event's snapshot and crops. Returns the number of vectors stored."""
         embedder = self._get_embedder()
-        with Session(get_engine()) as session:
+        with self._index_lock, Session(get_engine()) as session:
             event = session.get(Event, event_id)
             if event is None or not event.snapshot_path:
                 return 0

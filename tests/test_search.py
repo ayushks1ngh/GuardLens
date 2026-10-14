@@ -116,3 +116,15 @@ def test_search_api_off_and_settings(tmp_path):
         assert client.get("/api/search", params={"q": "red"}).status_code == 409
         assert client.post("/api/search/reindex").status_code == 409
         assert client.get("/api/search/status").json()["enabled"] is False
+
+
+def test_concurrent_indexing_never_duplicates_vectors(search):
+    import threading
+    camera_id = _camera()
+    frame = np.zeros((64, 64, 3), dtype=np.uint8); frame[:] = COLORS["blue"]
+    event = event_store.persist(camera_id, EventDraft(type="person", severity="info", snapshot=frame))
+    threads = [threading.Thread(target=search_service.index_event, args=(event.id,)) for _ in range(6)]
+    [t.start() for t in threads]; [t.join() for t in threads]
+    with Session(get_engine()) as session:
+        rows = session.exec(select(EventEmbedding).where(EventEmbedding.event_id == event.id)).all()
+    assert len(rows) == 1  # one frame vector, however many callers raced
