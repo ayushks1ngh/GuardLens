@@ -65,28 +65,28 @@ class FaceDetector(Detector):
         # Haar cascade needs this guard (it fires on rooftops and foliage); YuNet rarely does, so it is off by default there.
         self.require_person = bool(config.get("require_person", self.backend == "opencv"))
 
-    def _boxes(self, frame: np.ndarray) -> list[tuple[int, int, int, int, float]]:
+    def _boxes(self, frame: np.ndarray) -> list[tuple]:
         height, width = frame.shape[:2]
         if self._yunet is not None:
             self._yunet.setInputSize((width, height))
             _, rows = self._yunet.detect(frame)
-            found = [] if rows is None else [(int(r[0]), int(r[1]), int(r[2]), int(r[3]), float(r[-1])) for r in rows]
+            found = [] if rows is None else [(int(r[0]), int(r[1]), int(r[2]), int(r[3]), float(r[-1]), r) for r in rows]
         else:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces = self._cascade.detectMultiScale(gray, scaleFactor=self._scale_factor, minNeighbors=self._min_neighbors,
                                                    minSize=(self._min_size, self._min_size))
-            found = [(int(x), int(y), int(w), int(h), 1.0) for x, y, w, h in faces]
+            found = [(int(x), int(y), int(w), int(h), 1.0, None) for x, y, w, h in faces]
         return [b for b in found if min(b[2], b[3]) >= self._min_size]
 
     def process(self, frame: np.ndarray) -> list[Detection]:
         height, width = frame.shape[:2]
         output = []
-        for x, y, w, h, score in self._boxes(frame):
+        for x, y, w, h, score, row in self._boxes(frame):
             x, y = max(0, x), max(0, y)
             crop = frame[y:y + h, x:x + w]
             if crop.size == 0:
                 continue
-            person_id, name, watchlist, match = face_runtime.match(face_runtime.embedding(crop))
+            person_id, name, watchlist, match = face_runtime.match(face_runtime.embed_detection(frame, row, crop))
             output.append(Detection(
                 class_name="face", confidence=round(min(1.0, max(0.0, score)), 3),
                 bbox=(x / width, y / height, min(1.0, (x + w) / width), min(1.0, (y + h) / height)),

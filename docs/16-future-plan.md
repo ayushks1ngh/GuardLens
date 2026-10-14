@@ -26,6 +26,8 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 - [x] 3.4 Optional detectors: `scripts/setup_optional.py` shows what is ready and the exact next step; `--hand-model` downloads the MediaPipe hand model with a pinned checksum (shared verified downloader `guardlens/models.py`). Installing `mediapipe` itself stays a deliberate manual step (it ships its own OpenCV).
 - Gate: ✅ report committed (docs/benchmarks/); per-camera numbers wait for your labels.
 
+- [x] 3.5 (found during 3.1) Face recognition: the old "who is it" comparison was a 32×32 pixel vector. Replaced by SFace on YuNet-aligned faces (threshold 0.5; measured 98.9% same-person / 0.25% stranger matches, docs/benchmarks/); old enrolments re-embedded automatically; falls back to pixels with a Health warning if the model is missing.
+
 ## Stage 4 — Trust and security
 - [ ] 4.1 Token scopes + expiry, sign-in audit log, per-account rate limits.
 - [ ] 4.2 Remote access (Tailscale / Cloudflare tunnel) verified end to end.

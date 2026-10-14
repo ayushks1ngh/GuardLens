@@ -56,7 +56,8 @@ async def lifespan(app: FastAPI):
         recording_values = stored_recording.value
     clip_recorder.configure(cfg.clips_dir(), recording_values)
     from guardlens.detectors._face_runtime import face_runtime
-    face_runtime.configure(cfg.faces_dir())
+    from guardlens import models as _models
+    face_runtime.configure(cfg.faces_dir(), models_dir=_models.models_dir(cfg.data_dir))
     from guardlens.notifiers import dispatcher
     dispatcher.reload()
     from guardlens.reporting.activity import activity_sampler

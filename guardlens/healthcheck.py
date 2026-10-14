@@ -64,6 +64,10 @@ def collect_issues(data_dir: Path) -> list[dict]:
     face_cfg = next((d for d in _cfg().detectors if d.get("key") == "face"), None)
     if face_cfg and face_cfg.get("backend", "yunet") == "yunet":
         from guardlens.detectors.face_detector import default_model_path
+        from guardlens import models
+        if not (models.models_dir() / models.SFACE_FILE).is_file():
+            out.append(_issue("warning", "faces", "Face recognition uses the older, less accurate method (the better recognition model is not installed).",
+                              "Run once on the server: python scripts/setup_face_model.py, then restart GuardLens."))
         if not Path(face_cfg.get("model") or default_model_path()).is_file():
             out.append(_issue("warning", "faces", "Face detection is using the older, less accurate method (the better face model is not installed).",
                               "Run once on the server: python scripts/setup_face_model.py, then restart GuardLens."))

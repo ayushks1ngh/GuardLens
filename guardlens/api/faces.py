@@ -43,25 +43,17 @@ def _person_or_404(session: Session, person_id: int):
     return person
 
 
-def _largest_face(image, allow_cropped: bool = True):
-    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    boxes = cascade.detectMultiScale(gray, 1.1, 5, minSize=(40, 40))
-    if len(boxes) == 0:
-        # Uploads may already be tightly cropped; live capture must prove that a
-        # face is present so a background scene cannot become an identity.
+def _save_enrollment(person_id: int, image, *, allow_cropped: bool = True) -> FaceImage:
+    h, w = image.shape[:2]
+    embedding, found = face_runtime.embed_image(image)
+    if not found:
+        # Uploads may already be tightly cropped; live capture must prove that a face is present so a
+        # background scene cannot become an identity.
         if not allow_cropped:
             raise HTTPException(422, "no face detected in current camera frame")
-        h, w = image.shape[:2]
-        if min(h, w) < 40: raise HTTPException(422, "image is too small for enrollment")
-        return image
-    x, y, w, h = max(boxes, key=lambda b: b[2] * b[3])
-    return image[y:y+h, x:x+w]
-
-
-def _save_enrollment(person_id: int, image, *, allow_cropped: bool = True) -> FaceImage:
-    face = _largest_face(image, allow_cropped=allow_cropped)
-    embedding = face_runtime.embedding(face).tolist()
+        if min(h, w) < 40:
+            raise HTTPException(422, "image is too small for enrollment")
+    embedding = embedding.tolist()
     filename = f"person-{person_id}-{uuid.uuid4().hex[:10]}.jpg"
     path = face_runtime.faces_dir / filename
     if not cv2.imwrite(str(path), image): raise HTTPException(500, "failed to save enrollment image")

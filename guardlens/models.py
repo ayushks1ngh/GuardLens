@@ -5,6 +5,10 @@ import hashlib
 import urllib.request
 from pathlib import Path
 
+SFACE_FILE = "face_recognition_sface_2021dec.onnx"
+SFACE_SHA256 = "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+SFACE_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/" + SFACE_FILE
+
 HAND_FILE = "hand_landmarker.task"
 HAND_SHA256 = "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1"
 HAND_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/" + HAND_FILE
