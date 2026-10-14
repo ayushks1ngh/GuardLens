@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError } from "../api";
-import { bearerExample, tokenUsedText, type ApiToken, type AuthStatus } from "../lib/auth";
+import { AUTH_CHANGED_EVENT, bearerExample, tokenUsedText, type ApiToken, type AuthStatus } from "../lib/auth";
 import { AuthForm } from "../components/AuthScreens";
 import type { Meta } from "../types";
 
@@ -26,6 +26,7 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
     }).catch(() => undefined);
   }, [loadTokens]);
   useEffect(() => { loadStatus(); }, [loadStatus]);
+  const afterSignIn = () => { loadStatus(); window.dispatchEvent(new Event(AUTH_CHANGED_EVENT)); };
 
   const fail = (e: unknown, fallback: string) => setError(e instanceof ApiError ? e.message : fallback);
 
@@ -47,6 +48,7 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
     try {
       const res = await api<{ enabled: boolean }>("/api/auth/settings", { method: "PUT", json: { enabled } });
       setStatus((s) => (s ? { ...s, enabled: res.enabled } : s));
+      window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
       setConfirmOff(false);
     } catch (err) { fail(err, "Could not change the login setting."); }
   };
@@ -102,13 +104,13 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
       {status?.needs_setup && (
         <>
           <p className="hint">Create the administrator account to protect your cameras. Login turns on as soon as you do, and then every device must sign in.</p>
-          <AuthForm mode="setup" onDone={loadStatus} />
+          <AuthForm mode="setup" onDone={afterSignIn} />
         </>
       )}
       {status && !status.needs_setup && !status.authenticated && (
         <>
           <p className="hint">Sign in to change your password or manage API tokens.</p>
-          <AuthForm mode="login" onDone={loadStatus} />
+          <AuthForm mode="login" onDone={afterSignIn} />
         </>
       )}
       {status?.authenticated && (

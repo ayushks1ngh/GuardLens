@@ -1,5 +1,7 @@
 export interface AuthStatus { enabled: boolean; needs_setup: boolean; authenticated: boolean; username: string | null }
 export interface ApiToken { id: number; name: string; created_at: string; last_used_at: string | null }
+/** Fired by screens that change the login state so the app shell re-reads it (banner, sign-out button). */
+export const AUTH_CHANGED_EVENT = "guardlens:auth-changed";
 export type Screen = "loading" | "setup" | "login" | "app";
 
 export function screenFor(s: AuthStatus | null): Screen {

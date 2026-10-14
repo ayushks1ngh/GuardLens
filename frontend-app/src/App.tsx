@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, UNAUTHORIZED_EVENT } from "./api";
 import { AuthScreen } from "./components/AuthScreens";
-import { screenFor, type AuthStatus } from "./lib/auth";
+import { AUTH_CHANGED_EVENT, screenFor, type AuthStatus } from "./lib/auth";
 import { PAGES } from "./pages/registry";
 import type { Meta } from "./types";
 import "./styles-search-auth.css";
@@ -14,6 +14,10 @@ export function App() {
     api<AuthStatus>("/api/auth/status").then(setAuth).catch(() => setAuthError(true));
   }, []);
   useEffect(() => { loadAuth(); }, [loadAuth]);
+  useEffect(() => {
+    window.addEventListener(AUTH_CHANGED_EVENT, loadAuth);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, loadAuth);
+  }, [loadAuth]);
   useEffect(() => {
     // Any later 401 means the session ended: show the login screen again.
     const bounce = () => setAuth((a) => (a ? { ...a, enabled: true, authenticated: false } : a));
