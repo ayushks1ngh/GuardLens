@@ -8,13 +8,14 @@
 body { margin: 0; background: var(--bg); color: var(--text); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .shell { display: grid; grid-template-columns: 200px 1fr; min-height: 100vh; }
-nav { background: var(--panel); border-right: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+/* The menu stays put while the page scrolls. */
+nav { background: var(--panel); border-right: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
 nav h1 { font-size: 18px; margin: 0 0 12px; letter-spacing: .5px; }
 nav button, nav a.legacy { text-align: left; padding: 9px 12px; border-radius: 8px; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; text-decoration: none; }
 nav button[aria-current="page"] { background: #1c2636; color: var(--accent); }
 nav button:hover, nav a.legacy:hover { background: #18212f; }
 nav a.legacy { margin-top: auto; color: var(--muted); font-size: 13px; }
-main { padding: 24px; max-width: 880px; }
+main { padding: 24px; max-width: 880px; min-width: 0; }
 h2 { margin: 0; } h3 { margin: 20px 0 8px; }
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
@@ -57,7 +58,7 @@ select, input[type="text"], input[type="url"], input[type="number"], input[type=
 .points-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
 .dot.ok { background: var(--accent); } .dot.warn { background: var(--warn); }
-@media (max-width: 700px) { .shell { grid-template-columns: 1fr; } nav { flex-direction: row; flex-wrap: wrap; } nav a.legacy { margin: 0 0 0 auto; } }
+@media (max-width: 700px) { .shell { grid-template-columns: 1fr; } nav { flex-direction: row; flex-wrap: wrap; position: static; height: auto; } nav a.legacy { margin: 0 0 0 auto; } }
 
 /* --- M1c: Zones / Faces / Notifiers / Recording / Reports --- */
 .row.wrap { flex-wrap: wrap; }
@@ -85,6 +86,11 @@ fieldset.card { margin: 0 0 16px; } fieldset.card legend { font-weight: 600; pad
 
 /* ---- M1c: Live ---- */
 main:has(.live-page), main:has(.events-page), main:has(.wizard) { max-width: 1400px; }
+/* Live: cameras on the left, chat on the right; the chat stays in view while the cameras scroll. */
+.live-split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.live-chat { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.chat-panel.compact .chat-log { max-height: 45vh; }
+@media (max-width: 1000px) { .live-split { grid-template-columns: 1fr; } .live-chat { position: static; max-height: none; } }
 .seg { display: inline-flex; gap: 4px; } .seg button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .live-grid { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 700px) { .live-grid { grid-template-columns: 1fr; } }

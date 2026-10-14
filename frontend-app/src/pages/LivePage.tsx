@@ -1,3 +1,5 @@
+import { ChatPanel } from "../components/ChatPanel";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE } from "../api";
 import { isNewCritical } from "../lib/eventLogic";
@@ -186,11 +188,16 @@ export function LivePage({ meta: _meta }: { meta: Meta | null }) {
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       {cameras && !cameras.length && <p className="hint">No cameras yet. Add one on the Cameras page.</p>}
-      <div className="live-grid" style={{ ["--cols" as string]: focus === null ? columns : 1 }}>
-        {shown.map((camera) => (
-          <Tile key={camera.id} camera={camera} overlay={overlays[String(camera.id)]} alert={(alerts[camera.id] ?? 0) > Date.now()}
-            focused={focus === camera.id} onFocus={() => setFocus(focus === camera.id ? null : camera.id)} onChanged={refresh} />
-        ))}
+      <div className="live-split">
+        <div className="live-grid" style={{ ["--cols" as string]: focus === null ? columns : 1 }}>
+          {shown.map((camera) => (
+            <Tile key={camera.id} camera={camera} overlay={overlays[String(camera.id)]} alert={(alerts[camera.id] ?? 0) > Date.now()}
+              focused={focus === camera.id} onFocus={() => setFocus(focus === camera.id ? null : camera.id)} onChanged={refresh} />
+          ))}
+        </div>
+        <aside className="live-chat" aria-label="Ask GuardLens">
+          <ErrorBoundary label="The chat"><ChatPanel compact /></ErrorBoundary>
+        </aside>
       </div>
     </section>
   );
