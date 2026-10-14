@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 

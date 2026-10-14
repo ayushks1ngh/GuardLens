@@ -16,8 +16,8 @@ memory of the previous conversation. Read this first; it tells you *where we are
 | **Last completed phase** | docs/13 roadmap M1–M6 built and verified end-to-end (see docs/08 tail) ✅ |
 | **Next phase** | Operator review in a real browser; physical gates (docs/09 checklist); optional YOLO-World detector; eval triage on real labelled alerts before enabling any suppression |
 | **Working tree** | A–F + VLM/UI work on `main`, being committed; secrets gitignored |
-| **Tests** | ~145 pytest + frontend vitest; `python scripts/e2e_smoke.py` for the real-server walkthrough |
-| **Last updated** | 2026-10-13 |
+| **Tests** | 163 pytest + 72 vitest; `python scripts/e2e_smoke.py` for the real-server walkthrough |
+| **Last updated** | 2026-10-14 — see `docs/15-open-work.md` for the ranked to-do list |
 
 **One-line resume:** server runs via `./scripts/testing_server.sh` (reads gitignored
 `.env` for the VLM key + optional TLS). Webcam needs `usbipd attach --wsl --busid 2-7`;

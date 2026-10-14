@@ -182,7 +182,6 @@ class AnalysisManager:
 
     def configure(self, config) -> None:
         """Instantiate enabled detectors + rule configs from app config."""
-        from guardlens.rules import RuleConfig
 
         detectors = []
         for entry in getattr(config, "detectors", []):

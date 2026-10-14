@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from guardlens.detectors._face_runtime import face_runtime
-from guardlens.rules import Rule, RuleConfig, register_rule
+from guardlens.rules import Rule, register_rule
 from guardlens.types import EventDraft
 
 

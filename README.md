@@ -33,6 +33,8 @@ See [`docs/12`](docs/12-agents-research.md), [`docs/13`](docs/13-build-roadmap.m
 [`docs/14`](docs/14-remote-access.md). Set `GUARDLENS_NVIDIA_API_KEY` (and/or
 `GUARDLENS_GEMINI_API_KEY`, `GUARDLENS_OPENROUTER_API_KEY`, `GUARDLENS_OLLAMA_URL`) to enable AI features.
 
+Open work and known gaps: [`docs/15-open-work.md`](docs/15-open-work.md).
+
 ## Run
 
 Local (creates/uses `.venv`):
@@ -73,6 +75,7 @@ Read these in order:
 | [`docs/12-agents-research.md`](docs/12-agents-research.md) | Research: market agent patterns, models/costs, agent catalogue + architecture |
 | [`docs/13-build-roadmap.md`](docs/13-build-roadmap.md) | Post-2.0 build plan M1–M6 with acceptance gates |
 | [`docs/14-remote-access.md`](docs/14-remote-access.md) | Login, API tokens, Tailscale / Cloudflare Tunnel |
+| [`docs/15-open-work.md`](docs/15-open-work.md) | Ranked list of what is still to do (audit of 2026-10-14) |
 
 ## Quick principles
 

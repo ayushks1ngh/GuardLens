@@ -475,3 +475,13 @@ crowd rule without saving, citation-grounded briefing) and real CLIP search (mod
 **Not done / deliberately deferred:** response playbooks (actions need hardware + human-confirm
 design; agents stay suggest-only), cross-camera re-ID, YOLO-World/YOLOE open-vocabulary detector
 (needs the `clip` package + weights; tracked in docs/13), physical-hardware gates from docs/09.
+
+## 2026-10-14 — Audit, one UI, detector check
+- Removed the classic dashboard; `/` → `/app/`. Left menu is Live / Events / Find footage / Reports / Settings
+  (Cameras, Rules, Zones, Faces, Notifications, Recording, AI helpers, Security, Health as tabs). Chat panel on the right of Live.
+- Detection boxes on Live are labelled ("person 61%") with a counts badge. Ask GuardLens says when a camera is offline.
+- Detector check on the sample (a 3×3 mosaic of nine CCTV feeds, no real faces): object finds people/cars/buses;
+  motion works; Haar faces were all false positives → faces must now lie on a person (`require_person`).
+- Delivery/diagnostics: no-cache entry page, HSTS only for the public host, browser errors reported to the server log
+  (`/api/client-log`), login-exposure warning at startup. Verified the login flow in real Chromium via Playwright.
+- CI workflow added. Tests: 163 pytest, 72 vitest, e2e 36/36 (48/48 with `--ai`).
