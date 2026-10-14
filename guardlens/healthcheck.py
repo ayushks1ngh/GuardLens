@@ -61,6 +61,12 @@ def collect_issues(data_dir: Path) -> list[dict]:
             out.append(_issue("warning", "scheduler", f"Background job “{job['name']}” failed last time.", "Check the server log."))
     from guardlens import maintenance
     from guardlens.config import load_config as _cfg
+    face_cfg = next((d for d in _cfg().detectors if d.get("key") == "face"), None)
+    if face_cfg and face_cfg.get("backend", "yunet") == "yunet":
+        from guardlens.detectors.face_detector import default_model_path
+        if not Path(face_cfg.get("model") or default_model_path()).is_file():
+            out.append(_issue("warning", "faces", "Face detection is using the older, less accurate method (the better face model is not installed).",
+                              "Run once on the server: python scripts/setup_face_model.py, then restart GuardLens."))
     if _cfg().backup.enabled:
         recent = maintenance.list_backups(_cfg())
         newest = datetime.fromisoformat(recent[0]["created_at"]) if recent else None

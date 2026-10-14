@@ -17,6 +17,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libglib2.0-0 libgl1
       - run: pip install -r requirements.txt pyflakes
       - run: python -m pyflakes guardlens scripts tests | grep -v "__init__.py" || true
+      - run: python scripts/setup_face_model.py
       - run: python -m pytest -q
 
   frontend:

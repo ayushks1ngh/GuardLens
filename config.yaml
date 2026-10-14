@@ -20,10 +20,9 @@ detectors:
     conf: 0.4
     imgsz: 640
   - key: face
-    backend: opencv
-    min_size: 40
-    min_neighbors: 8      # higher = fewer false faces
-    require_person: true  # a face must sit inside a detected person
+    backend: yunet        # needs `python scripts/setup_face_model.py` once; falls back to opencv (Haar) without it
+    score_threshold: 0.7  # YuNet: higher = fewer, surer faces
+    # min_size: smallest face in pixels (default 20 for yunet, 40 for the opencv fallback)
 
 # Enabled rules. Params remain JSON/config-driven; no schema changes are needed.
 rules:

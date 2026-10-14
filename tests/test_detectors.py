@@ -111,3 +111,70 @@ def test_pipeline_drops_faces_that_are_not_on_a_person():
 def test_hand_gesture_without_mediapipe_degrades_instead_of_crashing():
     det = create_detector("hand_gesture", {})
     assert det.process(np.zeros((120, 160, 3), dtype=np.uint8)) == []
+
+
+# ---- YuNet face backend (Stage 3.1) ------------------------------------------------------------------------------
+from guardlens.detectors.face_detector import YUNET_FILE, YUNET_SHA256  # noqa: E402
+
+PHOTO = Path("tests/assets/solvay_conference.jpg")  # public-domain group photo with 29 clearly visible faces
+MODEL = Path("data/models") / YUNET_FILE  # the project copy (tests run with a temporary data dir)
+needs_yunet = pytest.mark.skipif(not MODEL.is_file(), reason="run scripts/setup_face_model.py first")
+
+
+@needs_yunet
+def test_model_file_is_the_pinned_one():
+    import hashlib
+    assert hashlib.sha256(MODEL.read_bytes()).hexdigest() == YUNET_SHA256
+
+
+@needs_yunet
+@pytest.mark.skipif(not PHOTO.exists(), reason="test photo missing")
+def test_yunet_finds_all_29_faces_in_the_group_photo_with_tight_boxes():
+    det = create_detector("face", {"backend": "yunet", "model": str(MODEL)})
+    assert det.backend == "yunet" and det.require_person is False
+    faces = det.process(cv2.imread(str(PHOTO)))
+    assert len(faces) >= 28  # the Haar cascade finds 24 of them
+    for f in faces:
+        x1, y1, x2, y2 = f.bbox
+        assert 0 <= x1 < x2 <= 1 and 0 <= y1 < y2 <= 1 and 0.7 <= f.confidence <= 1.0
+        assert (x2 - x1) * (y2 - y1) < 0.01  # a face, not a person or a wall
+        assert f.attributes["backend"] == "yunet"
+
+
+@needs_yunet
+@pytest.mark.skipif(not SAMPLE.exists(), reason="sample video not present")
+def test_yunet_raises_no_false_faces_on_the_faceless_cctv_sample():
+    det = create_detector("face", {"backend": "yunet", "model": str(MODEL)})
+    assert sum(len(det.process(f)) for f in _frames(25)) == 0  # Haar's default gave 116 here
+
+
+def test_missing_model_falls_back_to_haar_with_its_safety_gate(tmp_path, caplog):
+    with caplog.at_level("WARNING", logger="guardlens.detectors.face"):
+        det = create_detector("face", {"backend": "yunet", "model": str(tmp_path / "nope.onnx")})
+    assert det.backend == "opencv" and det.require_person is True and "setup_face_model.py" in caplog.text
+    assert det.process(np.zeros((240, 320, 3), dtype=np.uint8)) == []
+
+
+def test_setup_script_refuses_a_download_that_fails_the_checksum(tmp_path, monkeypatch):
+    import importlib.util, io
+    spec = importlib.util.spec_from_file_location("setup_face_model", "scripts/setup_face_model.py")
+    script = importlib.util.module_from_spec(spec); spec.loader.exec_module(script)
+    monkeypatch.setattr(script, "default_model_path", lambda: tmp_path / "models" / YUNET_FILE)
+    monkeypatch.setattr(script.urllib.request, "urlopen", lambda *a, **k: io.BytesIO(b"not a model"))
+    assert script.main() == 1
+    assert not (tmp_path / "models" / YUNET_FILE).exists() and not list((tmp_path / "models").glob("*.part"))
+
+
+def test_health_tells_you_when_the_better_face_model_is_missing(monkeypatch, tmp_path):
+    from guardlens import healthcheck
+    from guardlens.config import load_config
+    cfg = load_config().model_copy(deep=True)
+    cfg.detectors = [{"key": "face", "backend": "yunet", "model": str(tmp_path / "absent.onnx")}]
+    from fastapi.testclient import TestClient
+    from guardlens.app import app
+    with TestClient(app):  # starts the database
+        monkeypatch.setattr("guardlens.config.load_config", lambda *a, **k: cfg)
+        issues = healthcheck.collect_issues(tmp_path)
+        assert any(i["area"] == "faces" and "setup_face_model.py" in i["fix"] for i in issues)
+        cfg.detectors = [{"key": "face", "backend": "opencv"}]
+        assert not any(i["area"] == "faces" for i in healthcheck.collect_issues(tmp_path))

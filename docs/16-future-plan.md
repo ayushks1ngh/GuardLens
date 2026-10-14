@@ -20,7 +20,7 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 - Gate: browser suite green in CI; 👤 webcam and phone show live video.
 
 ## Stage 3 — Detection quality
-- [ ] 3.1 Better faces (YuNet/SCRFD as an explicit setup step). 👤 a few consenting test photos.
+- [x] 3.1 Better faces: YuNet backend (`python scripts/setup_face_model.py`, checksum-pinned, MIT model); falls back to Haar with its person-gate and a Health warning when not installed. Measured: group photo 29/29 faces (Haar 24, looser boxes); CCTV sample 0 false faces (Haar default 116). [ ] 👤 enrolment test with a few consenting real photos.
 - [ ] 3.2 Accuracy benchmark on labelled footage (misses + false alarms per detector).
 - [ ] 3.3 Triage evaluation on ≥ 50 labelled alerts; suppression stays off unless ≤ 1% real alerts missed.
 - [ ] 3.4 Optional detectors (gestures, open-vocab) as one-command installs.
