@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentsPage } from "./AgentsPage";
-import { AssistantPage } from "./AssistantPage";
+import { ChatPanel } from "../components/ChatPanel";
 
 type Call = { url: string; method: string; body?: string };
 let calls: Call[] = [];
@@ -49,9 +49,9 @@ describe("AgentsPage", () => {
   });
 });
 
-describe("AssistantPage", () => {
+describe("ChatPanel", () => {
   it("sends a question and shows answer, frame and citation chip", async () => {
-    render(<AssistantPage meta={null} />);
+    render(<ChatPanel />);
     fireEvent.click(screen.getByRole("button", { name: "What happened today?" }));
     await screen.findByText("Nothing much.");
     expect(screen.getByRole("button", { name: "Alert #12" })).toBeTruthy();

@@ -14,13 +14,13 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("menu", () => {
   it("keeps the left menu short and puts the rest under Settings tabs", async () => {
-    expect(MAIN_PAGES.map((p) => p.label)).toEqual(["Live", "Events", "Ask GuardLens", "Find footage", "Reports"]);
+    expect(MAIN_PAGES.map((p) => p.label)).toEqual(["Live", "Events", "Find footage", "Reports"]);
     expect(SETTINGS_PAGES.map((p) => p.label)).toEqual(
       ["Cameras", "Rules", "Zones", "Faces", "Notifications", "Recording", "AI helpers", "Security", "Health"]);
     render(<App />);
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    expect(within(nav).getAllByRole("button").map((b) => b.textContent).slice(0, 6))
-      .toEqual(["Live", "Events", "Ask GuardLens", "Find footage", "Reports", "Settings"]);
+    expect(within(nav).getAllByRole("button").map((b) => b.textContent).slice(0, 5))
+      .toEqual(["Live", "Events", "Find footage", "Reports", "Settings"]);
     expect(screen.queryByRole("tablist")).toBeNull();
     fireEvent.click(within(nav).getByRole("button", { name: "Settings" }));
     expect(screen.getAllByRole("tab")).toHaveLength(9);
