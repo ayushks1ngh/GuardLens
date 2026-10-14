@@ -30,7 +30,7 @@ SESSION_DAYS = 14
 _SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1}
 PUBLIC_EXACT = {
     "/", "/healthz", "/health", "/publish", "/favicon.ico", "/api/auth/status", "/api/auth/login",
-    "/api/auth/setup", "/api/auth/logout", "/api/pairing/offer",
+    "/api/auth/setup", "/api/auth/logout", "/api/pairing/offer", "/api/client-log",
 }
 PUBLIC_PREFIX = ("/app",)  # the built dashboard itself (it needs to load to show the login screen)
 

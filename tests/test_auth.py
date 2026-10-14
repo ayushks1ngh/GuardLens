@@ -157,3 +157,11 @@ def test_classic_page_sends_signed_out_visitors_to_the_login_screen(client):
     assert anonymous.get("/").status_code == 200  # still served (public) so the guard script can run
     assert anonymous.get("/api/auth/status").json() == {
         "enabled": True, "needs_setup": False, "authenticated": False, "username": None}
+
+
+def test_browser_crash_reports_reach_the_server_log_even_signed_out(client, caplog):
+    client.post("/api/auth/setup", json={"username": "admin", "password": PASSWORD})
+    anonymous = TestClient(app)
+    with caplog.at_level("ERROR", logger="guardlens.client"):
+        r = anonymous.post("/api/client-log", json={"message": "boom", "stack": "at x", "page": "/app/", "agent": "test"})
+    assert r.status_code == 204 and "BROWSER ERROR on /app/" in caplog.text and "boom" in caplog.text

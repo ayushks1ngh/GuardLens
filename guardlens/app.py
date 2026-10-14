@@ -176,6 +176,7 @@ def create_app() -> FastAPI:
     from guardlens.api.agents import router as agents_router
     from guardlens.api.assistant import router as assistant_router
     from guardlens.api.auth import router as auth_router
+    from guardlens.api.clientlog import router as clientlog_router
     from guardlens.api.cameras import router as cameras_router
     from guardlens.api.events import router as events_router
     from guardlens.api.faces import router as faces_router
@@ -190,6 +191,7 @@ def create_app() -> FastAPI:
     from guardlens.api.vision import router as vision_router
 
     app.include_router(auth_router)
+    app.include_router(clientlog_router)
     app.include_router(agents_router)
     app.include_router(assistant_router)
     app.include_router(privacy_router)
