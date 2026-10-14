@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, UNAUTHORIZED_EVENT } from "./api";
 import { AuthScreen } from "./components/AuthScreens";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AUTH_CHANGED_EVENT, screenFor, type AuthStatus } from "./lib/auth";
 import { PAGES } from "./pages/registry";
 import type { Meta } from "./types";
@@ -28,7 +29,7 @@ export function App() {
   const screen = screenFor(auth);
   if (authError) return <div className="auth-screen"><div className="card auth-card"><p className="error" role="alert">Could not reach GuardLens.</p><button type="button" onClick={loadAuth}>Try again</button></div></div>;
   if (screen === "loading") return <div className="auth-screen" role="status">Loading…</div>;
-  if (screen === "setup" || screen === "login") return <AuthScreen mode={screen} onDone={loadAuth} />;
+  if (screen === "setup" || screen === "login") return <ErrorBoundary label="The sign-in screen"><AuthScreen mode={screen} onDone={loadAuth} /></ErrorBoundary>;
   return <Dashboard auth={auth!} onSignedOut={loadAuth} />;
 }
 
@@ -70,7 +71,7 @@ function Dashboard({ auth, onSignedOut }: { auth: AuthStatus; onSignedOut: () =>
             <button type="button" aria-label="Dismiss" onClick={hideBanner}>×</button>
           </div>
         )}
-        <Page meta={meta} />
+        <ErrorBoundary key={page} label="This page"><Page meta={meta} /></ErrorBoundary>
       </main>
     </div>
   );
