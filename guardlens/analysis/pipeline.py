@@ -75,11 +75,16 @@ class AnalysisWorker:
         if not self._inference_lock.acquire(blocking=False):
             raise InferenceBusy
         try:
+            ran = set()
             for det in self._detectors:
                 if det.should_process(self.camera_id, timestamp):
+                    ran.add(det.key)
                     detections.extend(det.process_for_camera(self.camera_id, frame))
         finally:
             self._inference_lock.release()
+        if "object" in ran and any(getattr(d, "require_person", False) for d in self._detectors):
+            from guardlens.detectors._face_runtime import faces_on_people
+            detections = faces_on_people(detections)
         detections = self._tracker.update(detections)
 
         h, w = frame.shape[:2]

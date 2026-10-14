@@ -53,3 +53,18 @@ class FaceRuntime:
 
 
 face_runtime = FaceRuntime()
+
+
+def faces_on_people(detections: list) -> list:
+    """Drop face detections whose centre is not inside any detected person.
+
+    Haar cascades fire on rooftops, foliage and luggage; a real face belongs to a person box.
+    Only called when a person-capable detector ran on the same frame.
+    """
+    people = [d.bbox for d in detections if d.class_name == "person"]
+
+    def on_person(box) -> bool:
+        cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+        return any(p[0] <= cx <= p[2] and p[1] <= cy <= p[3] for p in people)
+
+    return [d for d in detections if d.class_name != "face" or on_person(d.bbox)]

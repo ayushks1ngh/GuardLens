@@ -22,6 +22,8 @@ detectors:
   - key: face
     backend: opencv
     min_size: 40
+    min_neighbors: 8      # higher = fewer false faces
+    require_person: true  # a face must sit inside a detected person
 
 # Enabled rules. Params remain JSON/config-driven; no schema changes are needed.
 rules:

@@ -24,7 +24,9 @@ class FaceDetector(Detector):
         if self._cascade.empty():
             raise RuntimeError(f"cannot load face cascade: {cascade_path}")
         self._scale_factor = float(config.get("scale_factor", 1.1))
-        self._min_neighbors = int(config.get("min_neighbors", 5))
+        self._min_neighbors = int(config.get("min_neighbors", 8))
+        # Keep a face only when it sits inside a detected person (needs the object detector on the same camera).
+        self.require_person = bool(config.get("require_person", True))
         self._min_size = int(config.get("min_size", 40))
         self._backend = config.get("backend", "opencv")
 

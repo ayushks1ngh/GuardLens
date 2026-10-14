@@ -65,3 +65,11 @@ def test_abandoned_partial_clips_are_removed_on_recovery(tmp_path):
 def test_three_publisher_bounded_soak():
     result=subprocess.run([".venv/bin/python","scripts/soak_publishers.py","--seconds","1","--publishers","3"],capture_output=True,text=True,timeout=10,check=True)
     assert "PASS: 3 isolated publishers" in result.stdout
+
+
+def test_hsts_only_for_the_configured_public_host(monkeypatch):
+    monkeypatch.setenv("GUARDLENS_PUBLIC_URL", "https://cams.example.com")
+    with TestClient(app, base_url="https://cams.example.com") as client:
+        assert "strict-transport-security" in client.get("/api/auth/status").headers
+    with TestClient(app, base_url="https://localhost") as client:
+        assert "strict-transport-security" not in client.get("/api/auth/status").headers

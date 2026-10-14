@@ -7,6 +7,7 @@ evidence snapshots. Later phases mount camera/event/face/rule/report routers.
 from __future__ import annotations
 
 import os
+from urllib.parse import urlsplit
 
 import logging
 import platform
@@ -178,8 +179,10 @@ def create_app() -> FastAPI:
         if path in ("/", "/publish") or path == "/app" or path == "/app/" or path == "/app/index.html":
             # The page that names the (hashed) script files must never be served stale after a rebuild.
             response.headers["Cache-Control"] = "no-cache"
-        if request.url.scheme == "https" and os.environ.get("GUARDLENS_PUBLIC_URL"):
-            # Only when a real address is configured: HSTS on https://localhost would pin the browser to https there.
+        public_host = urlsplit(os.environ.get("GUARDLENS_PUBLIC_URL", "")).hostname
+        if request.url.scheme == "https" and public_host and request.url.hostname == public_host \
+                and public_host not in ("localhost", "127.0.0.1", "::1"):
+            # Only for the configured public address: HSTS on localhost or a bare dev IP would pin the browser to https there.
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         return response
 
