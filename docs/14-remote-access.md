@@ -50,3 +50,13 @@ the same origin (the tunnel URL); a split-origin setup should use API tokens ins
   changes and login on/off. Passwords and tokens are never written to it.
 - After 10 wrong passwords for the same account within 5 minutes, that account refuses sign-ins (even the right
   password) for the rest of the window; 5 wrong passwords from one address block that address for a minute.
+
+
+## What has been verified for remote access (2026-10-14)
+| Behaviour | How verified |
+|---|---|
+| Until an admin exists, anything arriving through a proxy/tunnel gets 403 (no data, no admin takeover) | automated test (`X-Forwarded-For`, `CF-Connecting-IP`, `Tailscale-User-Login`) |
+| Once an admin exists, a signed-out remote visitor gets the sign-in screen only; every data, stream, snapshot, token and audit endpoint answers 401 | automated test |
+| Session cookie is `HttpOnly; SameSite=Lax`, and `Secure` when the tunnel says `X-Forwarded-Proto: https` | automated test |
+| Read-only and expiring tokens, audit log, per-account throttle | automated tests + real-browser suite |
+| **Not verified here:** a real Tailscale Serve / Funnel or Cloudflare Tunnel session (needs your account and a device outside your network) | 👤 do once: set `GUARDLENS_PUBLIC_URL`, create the admin locally, open the tunnel URL from your phone on mobile data, sign in, and check Settings → Security shows that sign-in with its address |

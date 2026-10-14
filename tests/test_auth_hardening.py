@@ -155,3 +155,25 @@ def test_old_database_gets_the_new_token_columns_and_old_tokens_stay_full_access
     with Session(engine) as session:
         row = session.exec(select(ApiToken)).one()
         assert row.scope == "full" and row.expires_at is None  # nothing existing becomes weaker or expires
+
+
+def test_behind_a_https_tunnel_the_session_cookie_is_secure_and_httponly(client):
+    """Cloudflare/Tailscale terminate TLS and forward plain HTTP with X-Forwarded-Proto: the cookie must still be Secure."""
+    proxied = {"X-Forwarded-For": "203.0.113.7", "X-Forwarded-Proto": "https"}
+    first = client.post("/api/auth/setup", json={"username": "admin", "password": PASSWORD})  # local: set up first (tunnel is refused until then)
+    assert first.status_code == 201 and "secure" not in first.headers["set-cookie"].lower()   # plain local http: not Secure (it would never be sent)
+    remote = TestClient(app)
+    r = remote.post("/api/auth/login", headers=proxied, json={"username": "admin", "password": PASSWORD})
+    cookie = r.headers["set-cookie"].lower()
+    assert r.status_code == 200 and "secure" in cookie and "httponly" in cookie and "samesite=lax" in cookie
+    assert remote.get("/api/cameras", headers=proxied).status_code in (200, 401)  # normal login rules apply once an admin exists
+
+
+def test_remote_visitors_without_login_see_only_the_sign_in_screen_not_data(client):
+    _signed_in(client)
+    remote = TestClient(app)
+    proxied = {"X-Forwarded-For": "203.0.113.7"}
+    assert remote.get("/app/", headers=proxied).status_code == 200  # the shell, so the sign-in screen can show
+    for path in ("/api/cameras", "/api/events", "/api/data/status", "/api/auth/tokens", "/api/auth/audit", "/history/x.jpg", "/stream/1/mjpeg"):
+        assert remote.get(path, headers=proxied).status_code in (401, 404), path
+    assert remote.get("/api/auth/status", headers=proxied).json()["authenticated"] is False
