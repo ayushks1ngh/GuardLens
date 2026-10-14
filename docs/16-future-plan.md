@@ -45,3 +45,6 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 ## Stage 5 — New capabilities (scope decided after Stage 4)
 Response playbooks (human-confirmed), cross-camera re-identification, mobile layout + push notifications.
 Each gets a short spec the user approves first.
+
+## Commit identity
+Commits must use an email that is added and verified on the GitHub account (Settings → Emails), otherwise GitHub does not credit them to the profile or show them on the contributions graph. This repo is configured with `git config user.email` accordingly.
