@@ -137,3 +137,14 @@ def test_chat_error_codes(monkeypatch):
     with TestClient(app) as client:
         assert client.post("/api/assistant/chat", json={"question": "hi"}).status_code == 503
         assert client.post("/api/assistant/chat", json={"question": ""}).status_code == 422
+
+
+def test_offline_camera_is_called_out_instead_of_guessing(ai, monkeypatch):
+    from guardlens.capture import manager as manager_module
+    with TestClient(app) as client:
+        camera_id = _camera("Garage")
+        monkeypatch.setattr(manager_module.manager, "get_worker", lambda cid: None)
+        out = client.post("/api/assistant/chat", json={"question": "what do you see?", "camera_id": camera_id}).json()
+        prompt = ai["calls"][-1][-1]["content"][0]["text"]
+        assert "Garage is offline" in prompt and "do not guess" in prompt
+        assert out["frame_url"] is None and out["camera"] == "Garage"

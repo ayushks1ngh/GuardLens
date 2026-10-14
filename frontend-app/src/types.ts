@@ -87,7 +87,10 @@ export interface EventRow {
 }
 export interface EventPage { items: EventRow[]; total: number; limit: number; offset: number }
 
-export interface OverlayBox { class: string; conf: number; bbox: [number, number, number, number]; track_id?: number | null }
+export interface OverlayBox {
+  class: string; conf: number; bbox: [number, number, number, number]; track_id?: number | null;
+  name?: string | null; gesture?: string | null;
+}
 export interface OverlayInfo {
   counts?: Record<string, number>; boxes?: OverlayBox[]; alert?: boolean; connected?: boolean; fps?: number;
 }

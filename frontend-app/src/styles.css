@@ -105,7 +105,11 @@ main:has(.live-page), main:has(.events-page), main:has(.wizard) { max-width: 140
 .feed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; display: block; }
 .feed-off { display: grid; place-items: center; color: var(--muted); }
 .feed-boxes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.feed-boxes rect { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.feed-box { position: absolute; border: 2px solid var(--box, #9aff6e); box-sizing: border-box; }
+.feed-box.tone-person { --box: #00e5ff; } .feed-box.tone-face { --box: #ffb020; }
+.feed-box-label { position: absolute; left: -2px; bottom: 100%; background: var(--box, #9aff6e); color: #05070a; font-size: 12px; line-height: 16px; padding: 0 5px; white-space: nowrap; font-weight: 600; }
+.feed-box:where([style*="top: 0%"]) .feed-box-label { bottom: auto; top: 0; }
+.feed-counts { position: absolute; left: 8px; top: 8px; background: rgba(5,7,10,.78); color: #f1f5f9; font-size: 13px; font-weight: 700; padding: 3px 8px; border-radius: 4px; pointer-events: none; }
 .feed-msg { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.7); padding: 4px 10px; border-radius: 6px; font-size: 13px; }
 .counts { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 6px 0; }
 .actions.wrap { flex-wrap: wrap; margin-top: 8px; }
@@ -159,3 +163,11 @@ button.danger { color: var(--crit); border-color: var(--crit); }
 .thumb img { display: block; max-width: 220px; max-height: 160px; border-radius: 8px; }
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 50; padding: 16px; }
 .lightbox img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
+
+/* Settings: one menu entry, sections as tabs */
+.settings-head { margin-bottom: 16px; }
+.settings-head h2 { margin: 0 0 10px; }
+.subtabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.subtabs button { padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.subtabs button:hover { background: #18212f; }
+.subtabs button[aria-selected="true"] { background: #1c2636; color: var(--accent); border-color: var(--line); }

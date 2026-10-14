@@ -25,7 +25,8 @@ describe("creating the account from the Security page", () => {
   it("updates the app shell: the 'Login is off' banner goes away and Sign out appears", async () => {
     render(<App />);
     expect(await screen.findByText(/Login is off: anyone on your network/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Security" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Security" }));
     await screen.findByRole("heading", { name: "Create the administrator account" });
     fireEvent.change(document.getElementById("auth-user")!, { target: { value: "admin" } });
     fireEvent.change(document.getElementById("auth-pass")!, { target: { value: "correct-horse-99" } });

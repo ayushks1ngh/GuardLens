@@ -204,7 +204,9 @@ def chat(question: str, camera_id: Optional[int], session_id: Optional[str], sna
         f"Question: {question}\n\nCamera scope: {scope}\nTime range: {label}\n"
         f"Alerts in range: {facts['total']} total (showing {len(facts['lines'])} most recent):\n"
         + ("\n".join(facts["lines"]) or "(no alerts in this range)")
-        + ("\n\nThe attached picture is the live view." if frame is not None else "\n\nNo live picture is attached.")
+        + ("\n\nThe attached picture is the live view." if frame is not None else (
+            f"\n\nNo live picture is attached: {scope} is offline or has no video right now. Say so plainly and do not guess what it shows; answer only from the alerts above."
+            if camera_id is not None else "\n\nNo live picture is attached."))
     )
     result = vlm_client.ask(frame, prompt, camera_id=camera_id, system=SYSTEM,
                             history=sessions.history(session_id), max_tokens=600, temperature=0.2)

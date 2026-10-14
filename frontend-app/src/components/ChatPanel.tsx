@@ -94,7 +94,7 @@ export function ChatPanel({ compact = false }: { compact?: boolean }) {
             )}
           </div>
         ))}
-        {state.waiting && <p className="hint" role="status">Thinking…</p>}
+        {state.waiting && <p className="hint" role="status">Thinking… looking at the camera and your alerts can take 10–20 seconds.</p>}
         <div ref={endRef} />
       </div>
 

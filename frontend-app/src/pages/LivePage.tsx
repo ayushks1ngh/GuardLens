@@ -2,6 +2,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE } from "../api";
+import { boxLabel, boxStyle, boxTone, countsText } from "../lib/overlay";
 import { isNewCritical } from "../lib/eventLogic";
 import { readPref, writePref } from "../lib/storage";
 import { useEventStream } from "../lib/useEventStream";
@@ -54,11 +55,14 @@ function VideoFeed({ camera, overlay, reloadToken }: { camera: CameraFull; overl
       <img key={nonce} alt={`Live video from ${camera.name}`} src={`${API_BASE}/stream/${camera.id}/mjpeg?r=${nonce}`}
         onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth) setRatio(i.naturalWidth / i.naturalHeight); setFailed(false); setAttempt(0); }}
         onError={onError} />
-      <svg className="feed-boxes" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden>
+      <div className="feed-boxes" aria-hidden>
         {boxes.map((b, i) => (
-          <rect key={i} x={b.bbox[0]} y={b.bbox[1]} width={b.bbox[2] - b.bbox[0]} height={b.bbox[3] - b.bbox[1]} />
+          <div key={b.track_id ?? i} className={`feed-box tone-${boxTone(b)}`} style={boxStyle(b)}>
+            <span className="feed-box-label">{boxLabel(b)}</span>
+          </div>
         ))}
-      </svg>
+      </div>
+      {boxes.length > 0 && <span className="feed-counts" aria-hidden>{countsText(overlay?.counts)}</span>}
       {failed && <div className="feed-msg" role="status">Video interrupted. Reconnecting…</div>}
     </div>
   );
