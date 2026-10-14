@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react";
-import { api, API_BASE, ApiError } from "../api";
+import { api, API_BASE, ApiError, UNAUTHORIZED_EVENT } from "../api";
+import { readSse } from "../lib/sse";
 import {
   STARTER_QUESTIONS, chatErrorText, chatReducer, initialChat, loadSession, saveSession, type ChatResponse,
 } from "../lib/chat";
@@ -33,10 +34,32 @@ export function ChatPanel({ compact = false }: { compact?: boolean }) {
     if (!question || state.waiting) return;
     setDraft("");
     dispatch({ type: "ask", text: question });
+    const body: Record<string, unknown> = { question, camera_id: cameraId };
+    if (sessionRef.current) body.session_id = sessionRef.current;
     try {
-      const body: Record<string, unknown> = { question, camera_id: cameraId };
-      if (sessionRef.current) body.session_id = sessionRef.current;
-      dispatch({ type: "answer", response: await api<ChatResponse>("/api/assistant/chat", { method: "POST", json: body }) });
+      const response = await fetch(`${API_BASE}/api/assistant/chat/stream`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+      if (response.status === 404 || response.status === 405) {  // an older server: answer all at once instead
+        dispatch({ type: "answer", response: await api<ChatResponse>("/api/assistant/chat", { method: "POST", json: body }) });
+        return;
+      }
+      if (!response.ok) {
+        if (response.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+        let detail: string | undefined;
+        try { detail = (await response.json()).detail; } catch { /* not JSON */ }
+        dispatch({ type: "fail", text: chatErrorText(response.status, typeof detail === "string" ? detail : undefined) });
+        return;
+      }
+      let finished = false;
+      await readSse(response, ({ event, data }) => {
+        const d = data as Record<string, unknown>;
+        if (event === "meta") dispatch({ type: "stream_start", sessionId: String(d.session_id), frameUrl: (d.frame_url as string | null) ?? null, camera: (d.camera as string | null) ?? null });
+        else if (event === "delta") dispatch({ type: "stream_delta", text: String(d.text ?? "") });
+        else if (event === "done") { finished = true; dispatch({ type: "stream_done", response: d as unknown as ChatResponse }); }
+        else if (event === "error") { finished = true; dispatch({ type: "fail", text: chatErrorText(Number(d.status) || undefined, String(d.message ?? "")) }); }
+      });
+      if (!finished) dispatch({ type: "fail", text: chatErrorText(undefined) });  // the connection ended early
     } catch (e) {
       dispatch({ type: "fail", text: e instanceof ApiError ? chatErrorText(e.status, e.message) : chatErrorText(undefined) });
     }
@@ -76,7 +99,7 @@ export function ChatPanel({ compact = false }: { compact?: boolean }) {
         )}
         {state.messages.map((m) => (
           <div key={m.id} className={`bubble bubble-${m.role}`}>
-            {m.role === "error" ? <p className="error" role="alert">{m.text}</p> : <p className="bubble-text">{m.text}</p>}
+            {m.role === "error" ? <p className="error" role="alert">{m.text}</p> : <p className="bubble-text">{m.text}{m.streaming && <span className="caret" aria-hidden>▍</span>}</p>}
             {m.role === "assistant" && m.frameUrl && (
               <button type="button" className="thumb" onClick={() => setZoom(m.frameUrl ?? null)} aria-label="Enlarge the picture the AI looked at">
                 <img src={frameSrc(m.frameUrl)} alt={`The picture the AI looked at${m.camera ? ` from ${m.camera}` : ""}`} loading="lazy" />
@@ -94,7 +117,7 @@ export function ChatPanel({ compact = false }: { compact?: boolean }) {
             )}
           </div>
         ))}
-        {state.waiting && <p className="hint" role="status">Thinking… looking at the camera and your alerts can take 10–20 seconds.</p>}
+        {state.waiting && !state.messages[state.messages.length - 1]?.streaming && <p className="hint" role="status">Looking at the camera and your alerts…</p>}
         <div ref={endRef} />
       </div>
 

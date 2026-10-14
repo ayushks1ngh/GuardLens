@@ -189,8 +189,8 @@ def strip_unknown_citations(text: str, allowed: set[int]) -> tuple[str, list[int
     return cleaned, sorted({int(i) for i in _CITE.findall(cleaned)})
 
 
-def chat(question: str, camera_id: Optional[int], session_id: Optional[str], snapshots_dir: Path) -> dict:
-    """Answer one question. Raises VlmUnavailable (mapped to HTTP errors by the API)."""
+def _prepare(question: str, camera_id: Optional[int], session_id: Optional[str], snapshots_dir: Path) -> dict:
+    """Everything needed to ask the model: grounded prompt, live picture, and the facts the answer may cite."""
     session_id = session_id or uuid.uuid4().hex
     with Session(get_engine()) as session:
         cameras = list(session.exec(select(Camera)).all())
@@ -208,14 +208,40 @@ def chat(question: str, camera_id: Optional[int], session_id: Optional[str], sna
             f"\n\nNo live picture is attached: {scope} is offline or has no video right now. Say so plainly and do not guess what it shows; answer only from the alerts above."
             if camera_id is not None else "\n\nNo live picture is attached."))
     )
-    result = vlm_client.ask(frame, prompt, camera_id=camera_id, system=SYSTEM,
-                            history=sessions.history(session_id), max_tokens=600, temperature=0.2)
-    allowed = {u["id"] for u in facts["used"]}
-    answer, cited = strip_unknown_citations(result.text, allowed)
-    sessions.remember(session_id, question, answer)
     frame_url = f"/history/{save_frame(frame, snapshots_dir)}" if frame is not None else None
+    return {"session_id": session_id, "question": question, "camera_id": camera_id, "prompt": prompt, "frame": frame,
+            "frame_url": frame_url, "camera": frame_label or scope, "facts": facts}
+
+
+def _finish(ctx: dict, text: str, provider: str, model: str) -> dict:
+    """Clean the model's text (drop citations to alerts it was not shown) and remember the exchange."""
+    facts = ctx["facts"]
+    allowed = {u["id"] for u in facts["used"]}
+    answer, cited = strip_unknown_citations(text, allowed)
+    sessions.remember(ctx["session_id"], ctx["question"], answer)
     return {
-        "session_id": session_id, "answer": answer, "citations": cited, "frame_url": frame_url,
-        "camera": frame_label or scope, "provider": result.provider, "model": result.model,
+        "session_id": ctx["session_id"], "answer": answer, "citations": cited, "frame_url": ctx["frame_url"],
+        "camera": ctx["camera"], "provider": provider, "model": model,
         "events_used": [u for u in facts["used"] if u["id"] in cited or len(facts["used"]) <= 8],
     }
+
+
+def chat(question: str, camera_id: Optional[int], session_id: Optional[str], snapshots_dir: Path) -> dict:
+    """Answer one question. Raises VlmUnavailable (mapped to HTTP errors by the API)."""
+    ctx = _prepare(question, camera_id, session_id, snapshots_dir)
+    result = vlm_client.ask(ctx["frame"], ctx["prompt"], camera_id=camera_id, system=SYSTEM,
+                            history=sessions.history(ctx["session_id"]), max_tokens=600, temperature=0.2)
+    return _finish(ctx, result.text, result.provider, result.model)
+
+
+def chat_stream(question: str, camera_id: Optional[int], session_id: Optional[str], snapshots_dir: Path):
+    """Like chat(), but yields {"type": "meta"} (picture + camera), {"type": "delta"} words, then {"type": "done"}."""
+    ctx = _prepare(question, camera_id, session_id, snapshots_dir)
+    yield {"type": "meta", "session_id": ctx["session_id"], "frame_url": ctx["frame_url"], "camera": ctx["camera"]}
+    for event in vlm_client.ask_stream(ctx["frame"], ctx["prompt"], camera_id=camera_id, system=SYSTEM,
+                                       history=sessions.history(ctx["session_id"]), max_tokens=600, temperature=0.2):
+        if event["type"] == "delta":
+            yield event
+        else:
+            result = event["result"]
+            yield {"type": "done", **_finish(ctx, result.text, result.provider, result.model)}

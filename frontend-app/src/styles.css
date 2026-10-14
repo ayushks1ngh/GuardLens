@@ -170,3 +170,5 @@ button.danger { color: var(--crit); border-color: var(--crit); }
 .subtabs button { padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--text); font: inherit; cursor: pointer; }
 .subtabs button:hover { background: #18212f; }
 .subtabs button[aria-selected="true"] { background: #1c2636; color: var(--accent); border-color: var(--line); }
+.caret { display: inline-block; margin-left: 1px; animation: blink 1s steps(2) infinite; color: var(--accent); }
+@keyframes blink { to { visibility: hidden; } }

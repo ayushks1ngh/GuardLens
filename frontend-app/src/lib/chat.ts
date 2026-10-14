@@ -6,12 +6,16 @@ export interface ChatResponse {
 export interface ChatMessage {
   id: number; role: "user" | "assistant" | "error"; text: string;
   citations?: number[]; frameUrl?: string | null; camera?: string | null; provider?: string; model?: string;
+  streaming?: boolean;
 }
 export interface ChatState { messages: ChatMessage[]; sessionId: string | null; waiting: boolean }
 
 export type ChatAction =
   | { type: "ask"; text: string }
   | { type: "answer"; response: ChatResponse }
+  | { type: "stream_start"; sessionId: string; frameUrl: string | null; camera: string | null }
+  | { type: "stream_delta"; text: string }
+  | { type: "stream_done"; response: ChatResponse }
   | { type: "fail"; text: string }
   | { type: "reset" };
 
@@ -32,8 +36,29 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         }],
       };
     }
-    case "fail":
-      return { ...state, waiting: false, messages: [...state.messages, { id: nextId, role: "error", text: action.text }] };
+    case "stream_start":
+      return {
+        ...state, sessionId: action.sessionId,
+        messages: [...state.messages, { id: nextId, role: "assistant", text: "", streaming: true, frameUrl: action.frameUrl, camera: action.camera }],
+      };
+    case "stream_delta": {
+      const last = state.messages[state.messages.length - 1];
+      if (!last?.streaming) return state;
+      return { ...state, messages: [...state.messages.slice(0, -1), { ...last, text: last.text + action.text }] };
+    }
+    case "stream_done": {
+      const r = action.response;
+      const final = { role: "assistant" as const, text: r.answer, citations: r.citations ?? [], frameUrl: r.frame_url, camera: r.camera, provider: r.provider, model: r.model, streaming: false };
+      const last = state.messages[state.messages.length - 1];
+      const messages = last?.streaming ? [...state.messages.slice(0, -1), { ...final, id: last.id }] : [...state.messages, { ...final, id: nextId }];
+      return { waiting: false, sessionId: r.session_id, messages };
+    }
+    case "fail": {
+      // A half-written streaming answer is dropped in favour of the error.
+      const kept = state.messages.filter((m) => !(m.streaming && !m.text));
+      const id = kept.length ? kept[kept.length - 1].id + 1 : 1;
+      return { ...state, waiting: false, messages: [...kept.map((m) => (m.streaming ? { ...m, streaming: false } : m)), { id, role: "error", text: action.text }] };
+    }
     case "reset":
       return initialChat;
   }

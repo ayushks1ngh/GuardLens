@@ -13,7 +13,7 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 - Gate: ✅ met — tests restore a backup, upgrade an old-schema database (data kept, backup taken first), roll back a failing step, and prove retention spares protected alerts.
 
 ## Stage 2 — Smooth daily use
-- [ ] 2.1 Chat speed: streaming replies, smaller frame, model picker (NVIDIA / Gemini Flash). Target first words < 3 s.
+- [x] 2.1 Chat speed: streaming replies (`POST /api/assistant/chat/stream`, SSE; provider fallback before the first word; broken streams keep the words received). Measured in real Chromium: first words 0.5–0.7 s (was 8–20 s for the whole answer); the provider's free-tier queue can still spike (one run took 8.5 s). Image size was measured and is NOT the bottleneck. Model picker deferred: set `GUARDLENS_GEMINI_API_KEY` to add Gemini Flash to the fallback chain.
 - [ ] 2.2 Cameras: "Test this camera" with plain diagnosis; phone setup guide; webcam auto-attach helper (usbipd). 👤 hardware check.
 - [ ] 2.3 Live polish: chat hint overlap, fullscreen/focus, empty states that say which camera is off and why.
 - [ ] 2.4 Browser smoke suite (Playwright) in CI: login, Live, Settings tabs, chat.

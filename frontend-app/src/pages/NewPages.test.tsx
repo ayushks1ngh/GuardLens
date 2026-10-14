@@ -25,6 +25,7 @@ beforeEach(() => {
     if (url === "/api/privacy") return ok({ local_only_cameras: init?.method === "PUT" ? JSON.parse(init.body as string).local_only_cameras : [] });
     if (url === "/api/agents/daily_briefing") return ok({ config: { enabled: true, daily_at: "23:30" }, status: { state: "active", runs_last_hour: 0 } });
     if (url === "/api/agents/daily_briefing/run") return ok({ status: "unavailable", reason: "no key" });
+    if (url === "/api/assistant/chat/stream") return { ok: false, status: 404, json: async () => ({}) };  // older server: falls back to one-shot
     if (url === "/api/assistant/chat") return ok({ session_id: "s9", answer: "Nothing much.", citations: [12], frame_url: "/history/f.jpg", camera: "Door", provider: "nvidia", model: "m", events_used: [] });
     return ok({});
   }));
@@ -50,7 +51,7 @@ describe("AgentsPage", () => {
 });
 
 describe("ChatPanel", () => {
-  it("sends a question and shows answer, frame and citation chip", async () => {
+  it("falls back to a one-shot answer when the server cannot stream: sends a question and shows answer, frame and citation chip", async () => {
     render(<ChatPanel />);
     fireEvent.click(screen.getByRole("button", { name: "What happened today?" }));
     await screen.findByText("Nothing much.");

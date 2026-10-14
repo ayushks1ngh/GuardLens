@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import logging
 import os
 import threading
@@ -160,6 +161,24 @@ def _encode(frame: np.ndarray, max_side: int = 1024) -> bytes:
     return buf.tobytes()
 
 
+_SSE_DONE = object()
+
+
+def _sse_delta(raw) -> object:
+    """The text carried by one server-sent-events line of an OpenAI-style stream; _SSE_DONE at the end, else None."""
+    line = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw
+    if not line.startswith("data:"):
+        return None
+    body = line[5:].strip()
+    if body == "[DONE]":
+        return _SSE_DONE
+    try:
+        choices = json.loads(body).get("choices") or []
+        return ((choices[0].get("delta") or {}).get("content") or None) if choices else None
+    except (ValueError, AttributeError):
+        return None
+
+
 class VlmClient:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -175,6 +194,7 @@ class VlmClient:
         self._stats: dict[str, Any] = {"calls": 0, "cached": 0, "failures": 0, "by_provider": defaultdict(int)}
         # Replaceable in tests: (url, headers, json, timeout) -> response-like object.
         self._post: Callable[..., Any] = self._http_post
+        self._stream: Callable[..., Any] = self._http_stream
 
     # -- configuration -------------------------------------------------
     def configure(self, cfg: Optional[dict] = None) -> None:
@@ -246,6 +266,125 @@ class VlmClient:
         import requests
         return requests.post(url, headers=headers, json=payload, timeout=timeout)
 
+    def _candidates(self, camera_id: Optional[int], now: float) -> list[ProviderSpec]:
+        """Providers allowed to see this camera; raises VlmUnavailable when none can, or the budget is spent."""
+        candidates = [p for p in self._ordered() if p.available and self._allowed(p, camera_id)]
+        if not candidates:
+            private = any(p.available for p in self._ordered())
+            raise VlmUnavailable(
+                "this camera is set to keep video on this device and no local AI model is set up"
+                if private else "no AI provider is configured", "privacy" if private else "unconfigured")
+        with self._lock:
+            self._budget.check(camera_id, now)
+        return candidates
+
+    @staticmethod
+    def _messages(prompt: str, image_bytes: bytes, system: Optional[str], history: Optional[Sequence[dict]]) -> list[dict]:
+        messages: list[dict] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.extend(history or [])
+        content: list[dict] = [{"type": "text", "text": prompt}]
+        if image_bytes:
+            b64 = base64.b64encode(image_bytes).decode("ascii")
+            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
+        messages.append({"role": "user", "content": content})
+        return messages
+
+    def _record_success(self, provider: ProviderSpec, camera_id: Optional[int]) -> None:
+        with self._lock:
+            self._breakers[provider.name].failures = 0
+            self._budget.record(camera_id, time.time())
+            self._stats["calls"] += 1
+            self._stats["by_provider"][provider.name] += 1
+
+    def _record_failure(self, provider: ProviderSpec, trips: bool) -> None:
+        breaker = self._breakers[provider.name]
+        with self._lock:
+            self._stats["failures"] += 1
+            if trips:
+                breaker.failures += 1
+                if breaker.failures >= self._breaker_failures:
+                    breaker.open_until = time.time() + self._breaker_cooldown
+                    breaker.failures = 0
+                    logger.warning("VLM provider %s paused for %ss", provider.name, self._breaker_cooldown)
+
+    @staticmethod
+    def _http_stream(url: str, headers: dict, payload: dict, timeout: float):
+        import requests
+        return requests.post(url, headers=headers, json=payload, timeout=timeout, stream=True)
+
+    def ask_stream(
+        self,
+        images: Sequence[np.ndarray] | np.ndarray | None,
+        prompt: str,
+        *,
+        camera_id: Optional[int] = None,
+        max_tokens: int = 512,
+        temperature: float = 0.2,
+        system: Optional[str] = None,
+        history: Optional[Sequence[dict]] = None,
+        timeout: float = 40.0,
+    ):
+        """Like ask(), but yields {"type": "delta", "text"} as words arrive, then {"type": "done", "result": VlmResult}.
+
+        Falls back to the next provider only before the first word arrives. If a provider breaks mid-answer the words
+        received so far are kept (the final text ends with an ellipsis). Raises VlmUnavailable when nothing answers.
+        """
+        frames: list[np.ndarray] = []
+        if images is not None:
+            frames = [images] if isinstance(images, np.ndarray) else list(images)
+        image_bytes = _encode(tile_images(frames)) if frames else b""
+        candidates = self._candidates(camera_id, time.time())
+        messages = self._messages(prompt, image_bytes, system, history)
+        errors: list[str] = []
+        for provider in candidates:
+            if self._breakers[provider.name].open_until > time.time():
+                errors.append(f"{provider.name}: paused after repeated failures")
+                continue
+            payload = {"model": provider.model(), "messages": messages, "max_tokens": max_tokens,
+                       "temperature": temperature, "stream": True}
+            headers = {"Accept": "text/event-stream"}
+            if provider.key():
+                headers["Authorization"] = f"Bearer {provider.key()}"
+            started, parts, trips, response = time.time(), [], True, None
+            try:
+                response = self._stream(provider.resolved_base().rstrip("/") + "/chat/completions", headers, payload, timeout)
+                if response.status_code != 200:
+                    errors.append(f"{provider.name}: HTTP {response.status_code}")
+                    trips = response.status_code in (408, 429) or response.status_code >= 500
+                else:
+                    for raw in response.iter_lines():
+                        delta = _sse_delta(raw)
+                        if delta is _SSE_DONE:
+                            break
+                        if delta:
+                            parts.append(delta)
+                            yield {"type": "delta", "text": delta}
+                    text = "".join(parts).strip()
+                    if not text:
+                        raise ValueError("empty answer")
+                    self._record_success(provider, camera_id)
+                    yield {"type": "done", "result": VlmResult(text, provider.name, payload["model"], int((time.time() - started) * 1000))}
+                    return
+            except GeneratorExit:
+                raise
+            except Exception as exc:
+                errors.append(f"{provider.name}: {type(exc).__name__}")
+                if parts:  # the answer broke off: keep the words that did arrive
+                    self._record_failure(provider, True)
+                    yield {"type": "done", "result": VlmResult("".join(parts).strip() + " …", provider.name, payload["model"],
+                                                                int((time.time() - started) * 1000))}
+                    return
+            finally:
+                if response is not None:
+                    try:
+                        response.close()
+                    except Exception:
+                        pass
+            self._record_failure(provider, trips)
+        raise VlmUnavailable("; ".join(errors) or "no provider answered", "failed")
+
     def ask(
         self,
         images: Sequence[np.ndarray] | np.ndarray | None,
@@ -275,24 +414,8 @@ class VlmClient:
                     self._stats["cached"] += 1
                 return VlmResult(hit[1].text, hit[1].provider, hit[1].model, 0, cached=True)
 
-        candidates = [p for p in self._ordered() if p.available and self._allowed(p, camera_id)]
-        if not candidates:
-            private = any(p.available for p in self._ordered())
-            raise VlmUnavailable(
-                "this camera is set to keep video on this device and no local AI model is set up"
-                if private else "no AI provider is configured", "privacy" if private else "unconfigured")
-        with self._lock:
-            self._budget.check(camera_id, now)
-
-        messages: list[dict] = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.extend(history or [])
-        content: list[dict] = [{"type": "text", "text": prompt}]
-        if image_bytes:
-            b64 = base64.b64encode(image_bytes).decode("ascii")
-            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
-        messages.append({"role": "user", "content": content})
+        candidates = self._candidates(camera_id, now)
+        messages = self._messages(prompt, image_bytes, system, history)
 
         errors: list[str] = []
         for provider in candidates:
@@ -313,12 +436,9 @@ class VlmClient:
                     if not text:
                         raise ValueError("empty answer")
                     result = VlmResult(text, provider.name, payload["model"], int((time.time() - started) * 1000))
-                    with self._lock:
-                        breaker.failures = 0
-                        self._budget.record(camera_id, time.time())
-                        self._stats["calls"] += 1
-                        self._stats["by_provider"][provider.name] += 1
-                        if cache_key:
+                    self._record_success(provider, camera_id)
+                    if cache_key:
+                        with self._lock:
                             self._cache[cache_key] = (time.time() + self._cache_seconds, result)
                             if len(self._cache) > 200:
                                 self._cache.pop(next(iter(self._cache)))
@@ -328,14 +448,7 @@ class VlmClient:
             except Exception as exc:  # network errors, bad JSON, empty answers
                 errors.append(f"{provider.name}: {type(exc).__name__}")
                 trips = True
-            with self._lock:
-                self._stats["failures"] += 1
-                if trips:
-                    breaker.failures += 1
-                    if breaker.failures >= self._breaker_failures:
-                        breaker.open_until = time.time() + self._breaker_cooldown
-                        breaker.failures = 0
-                        logger.warning("VLM provider %s paused for %ss", provider.name, self._breaker_cooldown)
+            self._record_failure(provider, trips)
         raise VlmUnavailable("; ".join(errors) or "no provider answered", "failed")
 
 
