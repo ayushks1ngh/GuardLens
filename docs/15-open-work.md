@@ -22,8 +22,7 @@ See `docs/16-future-plan.md` for the staged plan and checkboxes.
    downscale the frame before sending, try Gemini Flash (already supported: `GUARDLENS_GEMINI_API_KEY`), cache answers
    per (camera, minute).
 5. **Triage suppression** stays OFF until `scripts/eval_triage.py` shows ≤1% missed real alerts on ≥50 labelled alerts.
-6. **Face recognition quality.** Haar is a weak detector; a modern one (YuNet / SCRFD ONNX) needs a model download
-   (the repo rule is "no implicit downloads", so make it an explicit setup step like the search model).
+6. ✅ **Face detection quality** — YuNet (explicit, checksum-pinned setup step). Recognition (who it is) still uses the simple embedding in `_face_runtime.py`; a stronger embedding model is the next step there.
 7. **Hand gestures.** `mediapipe` is not in `requirements.txt` and needs a model file; the detector degrades to "off".
 8. **open_vocab detector** needs `pip install git+https://github.com/ultralytics/CLIP.git`.
 9. **Deferred by design:** response playbooks (human-confirmed actions) and cross-camera re-identification.

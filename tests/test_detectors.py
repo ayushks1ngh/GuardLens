@@ -160,7 +160,7 @@ def test_setup_script_refuses_a_download_that_fails_the_checksum(tmp_path, monke
     spec = importlib.util.spec_from_file_location("setup_face_model", "scripts/setup_face_model.py")
     script = importlib.util.module_from_spec(spec); spec.loader.exec_module(script)
     monkeypatch.setattr(script, "default_model_path", lambda: tmp_path / "models" / YUNET_FILE)
-    monkeypatch.setattr(script.urllib.request, "urlopen", lambda *a, **k: io.BytesIO(b"not a model"))
+    monkeypatch.setattr("guardlens.models.urllib.request.urlopen", lambda *a, **k: io.BytesIO(b"not a model"))
     assert script.main() == 1
     assert not (tmp_path / "models" / YUNET_FILE).exists() and not list((tmp_path / "models").glob("*.part"))
 

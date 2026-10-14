@@ -108,6 +108,25 @@ function Activity({ agentKey, refreshKey }: { agentKey: string; refreshKey: numb
   );
 }
 
+interface FeedbackSummary { judged: number; real: number; false_alarms: number; with_ai_notes: number; needed_real: number; evaluation: { safe_to_enable_suppression: boolean; missed_real_rate: number | null } }
+
+export function feedbackText(f: FeedbackSummary): string {
+  if (f.real < f.needed_real) {
+    return `You have judged ${f.judged} alerts (${f.real} real, ${f.false_alarms} false alarms). Judge at least ${f.needed_real} real ones on the Events page (“Real alert” / “False alarm”) before the AI is allowed to hide anything.`;
+  }
+  const missed = f.evaluation.missed_real_rate;
+  return f.evaluation.safe_to_enable_suppression
+    ? "Enough alerts judged, and the AI would have hidden almost no real alert."
+    : `Enough alerts judged, but the AI would have hidden ${missed === null ? "some" : `${Math.round(missed * 100)}% of`} real alerts, so hiding stays off.`;
+}
+
+function JudgedProgress() {
+  const [f, setF] = useState<FeedbackSummary | null>(null);
+  useEffect(() => { api<FeedbackSummary>("/api/events/feedback/summary").then(setF).catch(() => undefined); }, []);
+  if (!f) return null;
+  return <p className="hint" role="status">{feedbackText(f)}</p>;
+}
+
 function AgentCard({ agent, onUpdated }: { agent: AgentInfo; onUpdated: (a: AgentInfo) => void }) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Values>(agent.config);
@@ -162,6 +181,7 @@ function AgentCard({ agent, onUpdated }: { agent: AgentInfo; onUpdated: (a: Agen
         </div>
       )}
       {message && <p className={errors.length ? "error" : "ok-text"} role="status">{message}</p>}
+      {agent.key === "event_triage" && <JudgedProgress />}
       <Activity agentKey={agent.key} refreshKey={refresh} />
     </section>
   );

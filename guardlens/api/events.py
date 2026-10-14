@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlmodel import Session, select
 
+from guardlens import feedback
 from guardlens.events import Event, EventNote, get_engine, utcnow
 from guardlens.events.store import event_bus, event_store, event_stream
 
@@ -80,6 +81,29 @@ async def stream_events(last_event_id: Optional[str] = Header(default=None)):
     except ValueError:
         last = event_bus.latest_sequence()
     return StreamingResponse(event_stream(last), media_type="text/event-stream")
+
+
+class FeedbackBody(BaseModel):
+    label: Optional[Literal["real", "false_alarm"]] = None
+
+
+@router.get("/feedback/summary")
+def feedback_summary():
+    """How many alerts have been judged real / false alarm (the data triage is evaluated on)."""
+    with Session(get_engine()) as session:
+        return {**feedback.summary(session), "evaluation": feedback.triage_report(session)}
+
+
+@router.put("/{event_id}/feedback")
+def set_feedback(event_id: int, body: FeedbackBody):
+    """Judge an alert: "real", "false_alarm", or null to clear. Never changes the alert's severity or status."""
+    with Session(get_engine()) as session:
+        event = _event_or_404(session, event_id)
+        feedback.set_label(event, body.label)
+        session.add(event)
+        session.commit()
+        session.refresh(event)
+        return event
 
 
 @router.get("/{event_id}/clip")

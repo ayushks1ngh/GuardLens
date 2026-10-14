@@ -58,6 +58,7 @@ function EventCard({ event, cameraName, onChanged, onDeleted }: {
   const [clip, setClip] = useState(false);
   const [note, setNote] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [snapGone, setSnapGone] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -79,6 +80,10 @@ function EventCard({ event, cameraName, onChanged, onDeleted }: {
     await api(`/api/events/${event.id}/notes`, { method: "POST", json: { text: note.trim() } });
     setNote(""); await loadDetail();
   });
+  const judged = (event.event_metadata as { feedback?: { label?: string } } | undefined)?.feedback?.label;
+  const judge = (label: "real" | "false_alarm") => run(async () => {
+    onChanged(await api<EventRow>(`/api/events/${event.id}/feedback`, { method: "PUT", json: { label: judged === label ? null : label } }));
+  });
   const remove = () => run(async () => { await api(`/api/events/${event.id}`, { method: "DELETE" }); onDeleted(event.id); });
 
   const sevClass = event.severity === "critical" || event.severity === "warning" || event.severity === "info" ? event.severity : "info";
@@ -93,10 +98,15 @@ function EventCard({ event, cameraName, onChanged, onDeleted }: {
       </div>
       <p className="hint">{cameraName} · {timeAgo(event.created_at)}</p>
       <AgentBlock meta={event.event_metadata} />
-      {event.snapshot_path && (
-        <img className="event-snap" loading="lazy" alt={`Snapshot of ${humanizeType(event.type)} on ${cameraName}`}
-          src={`${API_BASE}/history/${encodeURIComponent(event.snapshot_path)}`} />
-      )}
+      {event.snapshot_path && (snapGone
+        ? <p className="hint">The picture for this alert is no longer available (it was removed to free space or deleted).</p>
+        : <img className="event-snap" loading="lazy" alt={`Snapshot of ${humanizeType(event.type)} on ${cameraName}`}
+            src={`${API_BASE}/history/${encodeURIComponent(event.snapshot_path)}`} onError={() => setSnapGone(true)} />)}
+      <div className="actions wrap" role="group" aria-label="Was this a real alert?">
+        <span className="hint">Was this real?</span>
+        <button type="button" disabled={busy} aria-pressed={judged === "real"} onClick={() => judge("real")}>Real alert</button>
+        <button type="button" disabled={busy} aria-pressed={judged === "false_alarm"} onClick={() => judge("false_alarm")}>False alarm</button>
+      </div>
       <div className="actions wrap">
         {event.status === "new" && <button type="button" disabled={busy} onClick={acknowledge}>Acknowledge</button>}
         {event.status !== "resolved" && <button type="button" disabled={busy} onClick={resolve}>Mark resolved</button>}
