@@ -158,6 +158,12 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def require_login(request, call_next):
+        # Nobody has set GuardLens up yet: refuse anything that came through a proxy or tunnel, so a stranger on the
+        # internet can neither watch the cameras nor claim the administrator account first. Local use is unaffected.
+        if _auth.arrived_through_proxy(request.headers) and not await __import__("asyncio").to_thread(_auth.auth_state.has_users):
+            return JSONResponse({"detail": "GuardLens is not set up yet. Create the administrator account on the computer "
+                                           "that runs it (Settings > Security) before using a tunnel or shared address."},
+                                status_code=403)
         if _auth.auth_state.enabled and not _auth.is_public(request.url.path, request.method):
             user = await __import__("asyncio").to_thread(_auth.authenticate, request.headers, request.cookies)
             if user is None:

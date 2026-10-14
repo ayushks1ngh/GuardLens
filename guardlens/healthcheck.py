@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta, timezone
 import shutil
 from pathlib import Path
 
@@ -58,8 +59,18 @@ def collect_issues(data_dir: Path) -> list[dict]:
     for job in scheduler.jobs():
         if job["last_status"].startswith("error"):
             out.append(_issue("warning", "scheduler", f"Background job “{job['name']}” failed last time.", "Check the server log."))
+    from guardlens import maintenance
+    from guardlens.config import load_config as _cfg
+    if _cfg().backup.enabled:
+        recent = maintenance.list_backups(_cfg())
+        newest = datetime.fromisoformat(recent[0]["created_at"]) if recent else None
+        if newest is None or datetime.now(timezone.utc) - newest > timedelta(days=2):
+            out.append(_issue("info", "backup", "There has been no database backup in the last 2 days.",
+                              "Open Settings > Data and press Back up now. Automatic backups run nightly at "
+                              f"{_cfg().backup.daily_at} while GuardLens is running."))
     if not auth.auth_state.enabled:
-        exposed = bool(os.environ.get("GUARDLENS_PUBLIC_URL"))
+        from guardlens.config import load_config
+        exposed = bool(os.environ.get("GUARDLENS_PUBLIC_URL")) or load_config().host not in ("127.0.0.1", "localhost", "::1")
         out.append(_issue("warning" if exposed else "info", "security", "Login is off: anyone who can reach this server can see the cameras.",
                           "Create the administrator account in Security before using a tunnel or sharing the address."))
     return out

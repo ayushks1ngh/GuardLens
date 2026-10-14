@@ -128,6 +128,14 @@ class AuthState:
 auth_state = AuthState()
 
 
+_PROXY_HEADERS = ("x-forwarded-for", "forwarded", "cf-connecting-ip", "x-real-ip", "tailscale-user-login")
+
+
+def arrived_through_proxy(headers) -> bool:
+    """True when a reverse proxy or tunnel (Cloudflare, Tailscale, nginx...) relayed the request."""
+    return any(headers.get(name) for name in _PROXY_HEADERS)
+
+
 def is_public(path: str, method: str) -> bool:
     if method == "OPTIONS" or path in PUBLIC_EXACT:
         return True

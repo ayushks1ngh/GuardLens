@@ -22,7 +22,10 @@ def _named_backup(name: str):
 @router.get("/status")
 def status():
     cfg = load_config()
+    from guardlens import migrations
+    from guardlens.events import get_engine
     return {"backups": maintenance.list_backups(cfg), "storage": maintenance.storage_summary(cfg),
+            "schema": {"version": migrations.get_version(get_engine()), "latest": migrations.latest_version()},
             "backup_policy": cfg.backup.model_dump(), "retention_policy": cfg.retention.model_dump()}
 
 

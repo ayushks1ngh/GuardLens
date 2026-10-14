@@ -15,8 +15,7 @@ What is still to be done, ranked. Items marked ✅ were closed in the same audit
 ## Backend — still to do
 See `docs/16-future-plan.md` for the staged plan and checkboxes.
 
-1. **Schema migrations.** Tables come from `create_all`; any model change breaks an existing `guardlens.db`.
-   Add Alembic (or a small versioned-migration table) before the next model change.
+1. ✅ **Schema migrations** — done (`guardlens/migrations.py`).
 2. ✅ **Retention for events and snapshots** — done (`retention.events_days`, default 90; unresolved critical alerts kept).
 3. ✅ **Backups** — done (nightly + manual, Settings → Data, `scripts/restore_backup.py`).
 4. **Chat latency.** One non-streaming call, 10–20 s on the NVIDIA 11B vision model. Options: SSE/streaming responses,
@@ -29,8 +28,7 @@ See `docs/16-future-plan.md` for the staged plan and checkboxes.
 8. **open_vocab detector** needs `pip install git+https://github.com/ultralytics/CLIP.git`.
 9. **Deferred by design:** response playbooks (human-confirmed actions) and cross-camera re-identification.
 10. **Auth hardening:** per-token scopes, token expiry, audit log of sign-ins, rate limit by account as well as client IP.
-11. **Network exposure default.** The server listens on `0.0.0.0` with login off until an admin is created (a warning is
-    logged). Consider forcing first-run setup, or defaulting the host to `127.0.0.1`.
+11. ✅ **Network exposure default** — proxied/tunnelled requests are refused until an admin exists; warnings in the log and Health.
 12. **Dependency refresh.** `fastapi` 0.115 → 0.143 etc. is pinned and works; update deliberately with the test suite.
 13. **Physical gates** from docs/09 (multi-phone soak, MediaPipe accuracy, operator checks) cannot be done in CI.
 

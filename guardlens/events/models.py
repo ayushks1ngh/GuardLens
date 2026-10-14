@@ -185,39 +185,18 @@ _engine = None
 
 def init_engine(db_url: str):
     global _engine
+    from sqlalchemy import inspect
+    from guardlens.migrations import migrate
+
     connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
     _engine = create_engine(db_url, connect_args=connect_args)
+    fresh = not inspect(_engine).get_table_names()
     SQLModel.metadata.create_all(_engine)
-    _migrate_camera_sources(_engine)
+    report = migrate(_engine, fresh=fresh)
+    if report["applied"] or report["repaired"]:
+        import logging
+        logging.getLogger("guardlens").warning("Database upgraded: %s", report)
     return _engine
-
-
-def _migrate_camera_sources(engine) -> None:
-    """Add Phase-A camera columns to existing databases without data loss.
-
-    A full migration framework can replace this small additive migration when
-    schema evolution grows. Existing source strings remain authoritative and
-    are interpreted by the OpenCV adapter when source_config is empty.
-    """
-    from sqlalchemy import inspect, text
-
-    inspector = inspect(engine)
-    if "camera" not in inspector.get_table_names():
-        return
-    columns = {column["name"] for column in inspector.get_columns("camera")}
-    with engine.begin() as connection:
-        if "source_type" not in columns:
-            connection.execute(text(
-                "ALTER TABLE camera ADD COLUMN source_type VARCHAR NOT NULL DEFAULT 'opencv'"
-            ))
-        if "source_config" not in columns:
-            # JSON is represented as TEXT on SQLite; '{}' preserves old rows.
-            connection.execute(text(
-                "ALTER TABLE camera ADD COLUMN source_config JSON NOT NULL DEFAULT '{}'"
-            ))
-        connection.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_camera_source_type ON camera (source_type)"
-        ))
 
 
 def get_engine():

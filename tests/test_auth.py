@@ -172,3 +172,15 @@ def test_browser_crash_reports_cannot_forge_log_lines(client, caplog):
     with caplog.at_level("ERROR", logger="guardlens.client"):
         client.post("/api/client-log", json={"message": "a\n2026-01-01 ERROR fake: login ok", "stack": "x\ny", "page": "/p\nq", "agent": "u\na"})
     assert len(caplog.records) == 1 and "\n" not in caplog.records[0].getMessage()
+
+
+def test_nothing_comes_through_a_tunnel_until_an_admin_exists(client):
+    for header in ({"X-Forwarded-For": "203.0.113.9"}, {"CF-Connecting-IP": "203.0.113.9"}, {"Tailscale-User-Login": "x@y"}):
+        for path, method in (("/api/cameras", "get"), ("/api/auth/status", "get"), ("/app/", "get")):
+            r = getattr(client, method)(path, headers=header)
+            assert r.status_code == 403 and "not set up yet" in r.json()["detail"], (header, path)
+        assert client.post("/api/auth/setup", headers=header, json={"username": "thief", "password": PASSWORD}).status_code == 403
+    assert client.get("/api/cameras").status_code == 200  # the same computer, no proxy: works as before
+    client.post("/api/auth/setup", json={"username": "admin", "password": PASSWORD})
+    # once an admin exists the normal login rules take over (a proxied, signed-out visitor sees the sign-in screen)
+    assert client.get("/api/auth/status", headers={"X-Forwarded-For": "203.0.113.9"}).status_code == 200

@@ -8,9 +8,9 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 - [x] 1.1 Backups: nightly + "Back up now", prune after 14 days (newest 3 kept, foreign files never touched), download, restore script.
 - [x] 1.2 Retention: events + pictures/clips older than 90 days removed; unresolved critical alerts always kept; "Clean up now".
 - [x] UI: Settings → Data (backups, policies in plain words, disk use).
-- [ ] 1.3 Migrations: versioned schema upgrades (Alembic or a small migration table) with a baseline for the current database.
-- [ ] 1.4 First-run safety: network access requires an admin account (listen on 127.0.0.1 until one exists).
-- Gate: tests restore a backup and upgrade an old-schema copy of the real DB; retention proven not to delete protected alerts.
+- [x] 1.3 Migrations: `guardlens/migrations.py` — version table, automatic backup before an upgrade, safe column repair, one transaction per numbered step (rolled back on failure). To change the schema: edit the model; if repair is not enough, append a `Migration`.
+- [x] 1.4 First-run safety (revised): while no admin exists, anything relayed by a proxy/tunnel (X-Forwarded-For, CF-Connecting-IP, Tailscale headers) is refused with 403, so nobody can claim the admin account over the internet. NOT "localhost only": on WSL2/Docker your own browser arrives from a non-loopback address and would be locked out. Health now warns (not just informs) when login is off and the server is network-reachable, and asks for a backup after 2 days without one.
+- Gate: ✅ met — tests restore a backup, upgrade an old-schema database (data kept, backup taken first), roll back a failing step, and prove retention spares protected alerts.
 
 ## Stage 2 — Smooth daily use
 - [ ] 2.1 Chat speed: streaming replies, smaller frame, model picker (NVIDIA / Gemini Flash). Target first words < 3 s.

@@ -114,3 +114,14 @@ def test_data_api_backup_download_delete_and_path_safety():
         assert client.delete("/api/data/backups/notes.txt").status_code == 404
         assert client.delete(f"/api/data/backups/{name}").json()["status"] == "deleted"
         assert client.post("/api/data/cleanup").json().keys() >= {"events_removed", "backups_removed"}
+
+
+def test_health_asks_for_a_backup_when_there_is_none_and_stops_once_there_is():
+    from guardlens.healthcheck import collect_issues
+    cfg = load_config()
+    with TestClient(app) as client:
+        for old in maintenance.backups_dir(cfg).glob("guardlens-*-*.db"):
+            old.unlink()
+        assert any(i["area"] == "backup" for i in collect_issues(Path(cfg.data_dir)))
+        client.post("/api/data/backups")
+        assert not any(i["area"] == "backup" for i in collect_issues(Path(cfg.data_dir)))
