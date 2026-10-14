@@ -147,16 +147,17 @@ def test_phone_publisher_endpoint_stays_reachable_with_its_own_token(client):
     assert TestClient(app).post("/api/pairing", json={}).status_code == 401  # creating pairings needs login
 
 
-def test_classic_page_sends_signed_out_visitors_to_the_login_screen(client):
-    """The classic dashboard has no sign-in form; with login on it must hand visitors to /app/."""
-    page = client.get("/classic").text
-    assert "location.replace('/app/')" in page
-    assert "/api/auth/status" in page
+def test_dashboard_shell_loads_signed_out_so_the_login_screen_can_show(client):
+    from guardlens.config import ROOT
     client.post("/api/auth/setup", json={"username": "admin", "password": PASSWORD})
     anonymous = TestClient(app)
-    assert anonymous.get("/classic").status_code == 200  # still served (public) so the guard script can run
     assert anonymous.get("/api/auth/status").json() == {
         "enabled": True, "needs_setup": False, "authenticated": False, "username": None}
+    assert anonymous.get("/api/cameras").status_code == 401
+    if (ROOT / "frontend-app" / "dist" / "index.html").exists():
+        page = anonymous.get("/app/")
+        assert page.status_code == 200 and '<div id="root">' in page.text
+        assert page.headers["cache-control"] == "no-cache"  # never serve a stale entry page after a rebuild
 
 
 def test_browser_crash_reports_reach_the_server_log_even_signed_out(client, caplog):
@@ -165,3 +166,9 @@ def test_browser_crash_reports_reach_the_server_log_even_signed_out(client, capl
     with caplog.at_level("ERROR", logger="guardlens.client"):
         r = anonymous.post("/api/client-log", json={"message": "boom", "stack": "at x", "page": "/app/", "agent": "test"})
     assert r.status_code == 204 and "BROWSER ERROR on /app/" in caplog.text and "boom" in caplog.text
+
+
+def test_browser_crash_reports_cannot_forge_log_lines(client, caplog):
+    with caplog.at_level("ERROR", logger="guardlens.client"):
+        client.post("/api/client-log", json={"message": "a\n2026-01-01 ERROR fake: login ok", "stack": "x\ny", "page": "/p\nq", "agent": "u\na"})
+    assert len(caplog.records) == 1 and "\n" not in caplog.records[0].getMessage()

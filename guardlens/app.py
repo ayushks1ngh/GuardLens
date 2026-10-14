@@ -6,6 +6,8 @@ evidence snapshots. Later phases mount camera/event/face/rule/report routers.
 """
 from __future__ import annotations
 
+import os
+
 import logging
 import platform
 from contextlib import asynccontextmanager
@@ -77,6 +79,10 @@ async def lifespan(app: FastAPI):
     vlm_client.configure(cfg.vlm)
     from guardlens import auth as _auth
     _auth.auth_state.load()
+    if not _auth.auth_state.enabled and cfg.host not in ("127.0.0.1", "localhost", "::1"):
+        logger.warning(
+            "Login is OFF and GuardLens listens on %s: anyone on this network can watch your cameras. "
+            "Create the administrator account under Settings > Security, or set GUARDLENS_HOST=127.0.0.1.", cfg.host)
     load_privacy()
     agent_runner.reload()
     _event_store.add_listener(agent_runner.on_event)
@@ -168,7 +174,12 @@ def create_app() -> FastAPI:
             "connect-src 'self' ws: wss:; script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline'",
         )
-        if request.url.scheme == "https":
+        path = request.url.path
+        if path in ("/", "/publish") or path == "/app" or path == "/app/" or path == "/app/index.html":
+            # The page that names the (hashed) script files must never be served stale after a rebuild.
+            response.headers["Cache-Control"] = "no-cache"
+        if request.url.scheme == "https" and os.environ.get("GUARDLENS_PUBLIC_URL"):
+            # Only when a real address is configured: HSTS on https://localhost would pin the browser to https there.
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         return response
 
@@ -251,8 +262,6 @@ def create_app() -> FastAPI:
     @app.get("/api/meta")
     async def meta():
         """Capability discovery for the UI: version, vocabularies, and optional features."""
-        import os
-
         from guardlens.coco import COCO_CLASSES
         from guardlens.notifiers import notifier_types
         from guardlens.rules import rule_types
@@ -292,25 +301,17 @@ def create_app() -> FastAPI:
             "recording": cfg.recording.model_dump(),
         }
 
-    def _classic_page() -> HTMLResponse:
-        index = ROOT / "frontend" / "index.html"
-        if index.exists():
-            return HTMLResponse(index.read_text(encoding="utf-8"))
-        return HTMLResponse("<h1>GuardLens</h1><p>Dashboard not found.</p>", status_code=404)
-
     ui_dist = ROOT / "frontend-app" / "dist"
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard():
-        # One front door: the new dashboard when it is built; the classic page is the fallback.
         if (ui_dist / "index.html").exists():
             from fastapi.responses import RedirectResponse
             return RedirectResponse("/app/", status_code=307)
-        return _classic_page()
-
-    @app.get("/classic", response_class=HTMLResponse)
-    async def classic_dashboard():
-        return _classic_page()
+        return HTMLResponse(
+            "<h1>GuardLens</h1><p>The dashboard is not built yet. Run "
+            "<code>cd frontend-app &amp;&amp; npm ci &amp;&amp; npm run build</code> and reload "
+            "(the Docker image builds it for you).</p>", status_code=503)
 
     # New React dashboard (built from frontend-app/). Absent in a bare checkout: the classic
     # dashboard at "/" keeps working until the build exists.

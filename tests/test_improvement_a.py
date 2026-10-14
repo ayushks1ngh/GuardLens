@@ -158,13 +158,3 @@ def test_existing_sqlite_camera_schema_migrates_without_data_loss(tmp_path):
     check = sqlite3.connect(db_path)
     row = check.execute("SELECT name, source, source_type, source_config FROM camera WHERE id=1").fetchone()
     assert row == ("Old", "0", "opencv", "{}")
-
-
-def test_dashboard_exposes_probe_first_source_wizard():
-    with TestClient(app) as client:
-        html = client.get("/classic").text
-        for marker in ("source-modes", "probe-cam-btn", "cam-device", "cam-url", "cam-path"):
-            assert f'id="{marker}"' in html
-        assert "Secure WebRTC pairing" in html
-        assert 'id="create-pairing-btn"' in html
-        assert 'id="add-cam-btn" disabled' in html

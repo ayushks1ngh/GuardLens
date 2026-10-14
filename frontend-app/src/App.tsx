@@ -67,7 +67,6 @@ function Dashboard({ auth, onSignedOut }: { auth: AuthStatus; onSignedOut: () =>
         ))}
         <button type="button" aria-current={inSettings ? "page" : undefined} onClick={() => setPage(lastSetting)}>Settings</button>
         {auth.enabled && <button type="button" className="signout" onClick={signOut}>Sign out{auth.username ? ` (${auth.username})` : ""}</button>}
-        <a className="legacy" href="/classic">Old dashboard</a>
       </nav>
       <main>
         {!auth.enabled && !bannerHidden && (

@@ -26,5 +26,6 @@ def report(body: ClientError):
     if len(_recent) >= 10:
         return Response(status_code=204)
     _recent.append(now)
-    logger.error("BROWSER ERROR on %s [%s]: %s | %s", body.page, body.agent, body.message, body.stack.replace("\n", " ⏎ "))
+    clean = lambda text: " ".join(text.split())  # one log line per report; no forged lines
+    logger.error("BROWSER ERROR on %s [%s]: %s | %s", clean(body.page), clean(body.agent), clean(body.message), clean(body.stack))
     return Response(status_code=204)

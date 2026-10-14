@@ -90,7 +90,6 @@ def test_react_app_is_served_when_built():
     with TestClient(app) as client:
         page = client.get("/app/")
         assert page.status_code == 200 and '<div id="root">' in page.text
-        assert client.get("/classic").status_code == 200  # classic dashboard still served
 
 
 def test_person_patch_and_snapshot_errors():
@@ -112,7 +111,7 @@ def test_object_class_events_carry_boxes_for_crop_indexing():
     assert drafts[0].metadata["boxes"] == [{"class": "person", "bbox": [0.1, 0.2, 0.5, 0.9]}]
 
 
-def test_root_opens_the_new_dashboard_and_classic_stays_available():
+def test_root_opens_the_dashboard():
     import pytest
     from guardlens.config import ROOT
     if not (ROOT / "frontend-app" / "dist" / "index.html").exists():
@@ -120,4 +119,4 @@ def test_root_opens_the_new_dashboard_and_classic_stays_available():
     with TestClient(app, follow_redirects=False) as client:
         r = client.get("/")
         assert r.status_code == 307 and r.headers["location"] == "/app/"
-        assert client.get("/classic").status_code == 200
+        assert client.get("/classic").status_code == 404  # the old page is gone

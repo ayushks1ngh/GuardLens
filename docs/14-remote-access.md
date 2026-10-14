@@ -15,7 +15,7 @@ Five wrong passwords from one address lock sign-in for a minute.
 Locked out? Start the server once with `GUARDLENS_AUTH_DISABLE=1` to bypass login, then fix
 the account in **Security**.
 
-The classic dashboard at `/` has no login screen; with login on, use `/app/`.
+The dashboard lives at `/app/` (`/` redirects there) and shows the sign-in screen itself when login is on.
 Phone publishers (`/publish`) keep working because they authenticate with their own
 short-lived pairing token.
 

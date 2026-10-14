@@ -18,7 +18,7 @@ from guardlens.recording import ClipRecorder
 
 def test_security_headers_and_signaling_bounds():
     with TestClient(app) as client:
-        response=client.get("/classic")
+        response=client.get("/api/auth/status")
         assert response.headers["x-content-type-options"] == "nosniff"
         assert response.headers["x-frame-options"] == "DENY"
         assert "camera=(self)" in response.headers["permissions-policy"]

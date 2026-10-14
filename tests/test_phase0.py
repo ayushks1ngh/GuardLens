@@ -53,9 +53,9 @@ def test_db_tables_created():
 
 def test_dashboard_served():
     with TestClient(app) as client:
-        r = client.get("/classic")
-        assert r.status_code == 200
-        assert "GUARDLENS" in r.text.upper()
+        r = client.get("/")  # follows the redirect to /app/ when built, else a "not built" notice
+        assert r.status_code in (200, 503)
+        assert "GUARDLENS" in r.text.upper() or '<div id="root">' in r.text
 
 
 def test_sample_video_present():
