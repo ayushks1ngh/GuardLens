@@ -23,6 +23,19 @@ class ReportingConfig(BaseModel):
 
 
 
+class BackupConfig(BaseModel):
+    """Automatic copies of the database. Files go to <data_dir>/backups."""
+    enabled: bool = True
+    daily_at: str = Field(default="03:30", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    keep_days: int = Field(default=14, ge=1, le=3650)
+
+
+class RetentionConfig(BaseModel):
+    """How long events and their pictures/clips are kept. Unresolved critical alerts are never removed."""
+    enabled: bool = True
+    events_days: int = Field(default=90, ge=1, le=3650)
+
+
 class RecordingConfig(BaseModel):
     enabled: bool = False
     mode: str = "event"
@@ -64,6 +77,8 @@ class Config(BaseModel):
 
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     recording: RecordingConfig = Field(default_factory=RecordingConfig)
+    backup: BackupConfig = Field(default_factory=BackupConfig)
+    retention: RetentionConfig = Field(default_factory=RetentionConfig)
 
     def snapshots_dir(self) -> Path:
         return Path(self.data_dir) / "snapshots"

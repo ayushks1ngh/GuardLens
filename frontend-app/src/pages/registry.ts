@@ -13,6 +13,7 @@ import { ZonesPage } from "./ZonesPage";
 import { AgentsPage } from "./AgentsPage";
 import { SearchPage } from "./SearchPage";
 import { SecurityPage } from "./SecurityPage";
+import { DataPage } from "./DataPage";
 
 export interface PageDef { key: string; label: string; component: ComponentType<{ meta: Meta | null }>; group?: "settings" }
 
@@ -31,6 +32,7 @@ export const PAGES: PageDef[] = [
   { key: "recording", label: "Recording", component: RecordingPage, group: "settings" },
   { key: "agents", label: "AI helpers", component: AgentsPage, group: "settings" },
   { key: "security", label: "Security", component: SecurityPage, group: "settings" },
+  { key: "data", label: "Data", component: DataPage, group: "settings" },
   { key: "health", label: "Health", component: HealthPage, group: "settings" },
 ];
 

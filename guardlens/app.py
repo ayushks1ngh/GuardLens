@@ -91,6 +91,9 @@ async def lifespan(app: FastAPI):
     search_service.configure(cfg.snapshots_dir())
     _event_store.add_listener(search_service.on_event)
     scheduler.add_job("activity-retention", lambda: prune_activity(cfg.reporting.retention_days), every=3600)
+    from guardlens import maintenance as _maintenance
+    scheduler.add_job("db-backup", lambda: _maintenance.nightly_backup(cfg), daily_at=cfg.backup.daily_at)
+    scheduler.add_job("event-retention", lambda: _maintenance.prune_events(cfg), every=3600)
     scheduler.add_job("clip-retention", lambda: __import__("guardlens.recording", fromlist=["clip_recorder"]).clip_recorder.prune(), every=3600)
     scheduler.add_job("nightly-report", lambda: __import__("guardlens.api.reporting", fromlist=["_generate"])._generate(
         __import__("datetime").datetime.now(__import__("datetime").timezone.utc).date(), force=True), daily_at="23:55")
@@ -191,6 +194,7 @@ def create_app() -> FastAPI:
     from guardlens.api.assistant import router as assistant_router
     from guardlens.api.auth import router as auth_router
     from guardlens.api.clientlog import router as clientlog_router
+    from guardlens.api.data import router as data_router
     from guardlens.api.cameras import router as cameras_router
     from guardlens.api.events import router as events_router
     from guardlens.api.faces import router as faces_router
@@ -206,6 +210,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(clientlog_router)
+    app.include_router(data_router)
     app.include_router(agents_router)
     app.include_router(assistant_router)
     app.include_router(privacy_router)

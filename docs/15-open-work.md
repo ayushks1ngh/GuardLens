@@ -13,11 +13,12 @@ What is still to be done, ranked. Items marked ✅ were closed in the same audit
 - ✅ CI (`.github/workflows/ci.yml`), lint clean-up, stale agent worktrees removed.
 
 ## Backend — still to do
+See `docs/16-future-plan.md` for the staged plan and checkboxes.
+
 1. **Schema migrations.** Tables come from `create_all`; any model change breaks an existing `guardlens.db`.
    Add Alembic (or a small versioned-migration table) before the next model change.
-2. **Retention for events and snapshots.** Only activity rows, clips and chat frames are pruned; events and their
-   snapshot JPEGs grow forever. Add `events.retention_days` + a scheduler job (never delete unresolved critical alerts).
-3. **Backups.** `data/backups/` exists but nothing writes to it. Add a nightly SQLite `.backup` + prune job and a restore doc.
+2. ✅ **Retention for events and snapshots** — done (`retention.events_days`, default 90; unresolved critical alerts kept).
+3. ✅ **Backups** — done (nightly + manual, Settings → Data, `scripts/restore_backup.py`).
 4. **Chat latency.** One non-streaming call, 10–20 s on the NVIDIA 11B vision model. Options: SSE/streaming responses,
    downscale the frame before sending, try Gemini Flash (already supported: `GUARDLENS_GEMINI_API_KEY`), cache answers
    per (camera, minute).

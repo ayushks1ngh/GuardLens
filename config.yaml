@@ -60,3 +60,13 @@ recording:
   retention_days: 7
   quota_mb: 2048
   codec_preferences: [mp4v, MJPG]
+
+# Data safety. Backups: nightly copy of the database into data/backups. Retention: events (and their pictures)
+# older than events_days are removed, except unresolved critical alerts.
+backup:
+  enabled: true
+  daily_at: "03:30"
+  keep_days: 14
+retention:
+  enabled: true
+  events_days: 90

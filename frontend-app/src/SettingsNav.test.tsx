@@ -16,14 +16,14 @@ describe("menu", () => {
   it("keeps the left menu short and puts the rest under Settings tabs", async () => {
     expect(MAIN_PAGES.map((p) => p.label)).toEqual(["Live", "Events", "Find footage", "Reports"]);
     expect(SETTINGS_PAGES.map((p) => p.label)).toEqual(
-      ["Cameras", "Rules", "Zones", "Faces", "Notifications", "Recording", "AI helpers", "Security", "Health"]);
+      ["Cameras", "Rules", "Zones", "Faces", "Notifications", "Recording", "AI helpers", "Security", "Data", "Health"]);
     render(<App />);
     const nav = await screen.findByRole("navigation", { name: "Main" });
     expect(within(nav).getAllByRole("button").map((b) => b.textContent).slice(0, 5))
       .toEqual(["Live", "Events", "Find footage", "Reports", "Settings"]);
     expect(screen.queryByRole("tablist")).toBeNull();
     fireEvent.click(within(nav).getByRole("button", { name: "Settings" }));
-    expect(screen.getAllByRole("tab")).toHaveLength(9);
+    expect(screen.getAllByRole("tab")).toHaveLength(10);
     fireEvent.click(screen.getByRole("tab", { name: "Health" }));
     expect(screen.getByRole("tab", { name: "Health" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(within(nav).getByRole("button", { name: "Live" }));
