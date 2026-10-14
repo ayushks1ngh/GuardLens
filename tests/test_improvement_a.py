@@ -162,7 +162,7 @@ def test_existing_sqlite_camera_schema_migrates_without_data_loss(tmp_path):
 
 def test_dashboard_exposes_probe_first_source_wizard():
     with TestClient(app) as client:
-        html = client.get("/").text
+        html = client.get("/classic").text
         for marker in ("source-modes", "probe-cam-btn", "cam-device", "cam-url", "cam-path"):
             assert f'id="{marker}"' in html
         assert "Secure WebRTC pairing" in html

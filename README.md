@@ -39,7 +39,7 @@ Local (creates/uses `.venv`):
 ```bash
 ./run.sh
 ```
-Then open <http://localhost:8080>. The default config uses CPU inference and the bundled
+Then open <http://localhost:8080> (it opens the dashboard at `/app/`; the old single-file page is still at `/classic`). The default config uses CPU inference and the bundled
 sample can be added as `data/samples/mall_cctv.mp4`. YOLO weights download once on first
 analysis startup. For LAN browser-camera testing, generate explicit development TLS with
 `scripts/setup_dev_tls.sh <LAN-IP>` and trust the generated certificate on each device;

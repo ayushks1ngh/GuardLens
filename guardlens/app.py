@@ -292,16 +292,28 @@ def create_app() -> FastAPI:
             "recording": cfg.recording.model_dump(),
         }
 
-    @app.get("/", response_class=HTMLResponse)
-    async def dashboard():
+    def _classic_page() -> HTMLResponse:
         index = ROOT / "frontend" / "index.html"
         if index.exists():
             return HTMLResponse(index.read_text(encoding="utf-8"))
         return HTMLResponse("<h1>GuardLens</h1><p>Dashboard not found.</p>", status_code=404)
 
+    ui_dist = ROOT / "frontend-app" / "dist"
+
+    @app.get("/", response_class=HTMLResponse)
+    async def dashboard():
+        # One front door: the new dashboard when it is built; the classic page is the fallback.
+        if (ui_dist / "index.html").exists():
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse("/app/", status_code=307)
+        return _classic_page()
+
+    @app.get("/classic", response_class=HTMLResponse)
+    async def classic_dashboard():
+        return _classic_page()
+
     # New React dashboard (built from frontend-app/). Absent in a bare checkout: the classic
     # dashboard at "/" keeps working until the build exists.
-    ui_dist = ROOT / "frontend-app" / "dist"
     if (ui_dist / "index.html").exists():
         app.mount("/app", StaticFiles(directory=str(ui_dist), html=True), name="app")
 

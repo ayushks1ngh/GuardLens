@@ -53,7 +53,7 @@ def test_db_tables_created():
 
 def test_dashboard_served():
     with TestClient(app) as client:
-        r = client.get("/")
+        r = client.get("/classic")
         assert r.status_code == 200
         assert "GUARDLENS" in r.text.upper()
 

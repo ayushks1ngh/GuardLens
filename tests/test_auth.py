@@ -149,12 +149,12 @@ def test_phone_publisher_endpoint_stays_reachable_with_its_own_token(client):
 
 def test_classic_page_sends_signed_out_visitors_to_the_login_screen(client):
     """The classic dashboard has no sign-in form; with login on it must hand visitors to /app/."""
-    page = client.get("/").text
+    page = client.get("/classic").text
     assert "location.replace('/app/')" in page
     assert "/api/auth/status" in page
     client.post("/api/auth/setup", json={"username": "admin", "password": PASSWORD})
     anonymous = TestClient(app)
-    assert anonymous.get("/").status_code == 200  # still served (public) so the guard script can run
+    assert anonymous.get("/classic").status_code == 200  # still served (public) so the guard script can run
     assert anonymous.get("/api/auth/status").json() == {
         "enabled": True, "needs_setup": False, "authenticated": False, "username": None}
 

@@ -61,7 +61,7 @@ function Dashboard({ auth, onSignedOut }: { auth: AuthStatus; onSignedOut: () =>
           </button>
         ))}
         {auth.enabled && <button type="button" className="signout" onClick={signOut}>Sign out{auth.username ? ` (${auth.username})` : ""}</button>}
-        <a className="legacy" href="/">Classic dashboard</a>
+        <a className="legacy" href="/classic">Old dashboard</a>
       </nav>
       <main>
         {!auth.enabled && !bannerHidden && (
