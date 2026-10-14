@@ -37,6 +37,13 @@ function Dashboard({ auth, onSignedOut }: { auth: AuthStatus; onSignedOut: () =>
     window.addEventListener("guardlens:navigate", go);
     return () => window.removeEventListener("guardlens:navigate", go);
   }, []);
+  const [bannerHidden, setBannerHidden] = useState(() => {
+    try { return sessionStorage.getItem("gl-login-banner") === "1"; } catch { return false; }
+  });
+  const hideBanner = () => {
+    setBannerHidden(true);
+    try { sessionStorage.setItem("gl-login-banner", "1"); } catch { /* private mode */ }
+  };
   const signOut = async () => { await api("/api/auth/logout", { method: "POST" }).catch(() => undefined); onSignedOut(); };
   const Page = PAGES.find((p) => p.key === page)?.component ?? PAGES[0].component;
   return (
@@ -51,7 +58,16 @@ function Dashboard({ auth, onSignedOut }: { auth: AuthStatus; onSignedOut: () =>
         {auth.enabled && <button type="button" className="signout" onClick={signOut}>Sign out{auth.username ? ` (${auth.username})` : ""}</button>}
         <a className="legacy" href="/">Classic dashboard</a>
       </nav>
-      <main><Page meta={meta} /></main>
+      <main>
+        {!auth.enabled && !bannerHidden && (
+          <div className="warn-box login-banner" role="status">
+            <span>Login is off: anyone on your network can watch your cameras. </span>
+            <button type="button" onClick={() => setPage("security")}>Set up login</button>
+            <button type="button" aria-label="Dismiss" onClick={hideBanner}>×</button>
+          </div>
+        )}
+        <Page meta={meta} />
+      </main>
     </div>
   );
 }

@@ -23,3 +23,6 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); tex
 .incident-panel { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-top: 8px; }
 .markdown h3, .markdown h4, .markdown h5 { margin: 12px 0 4px; } .markdown p { margin: 6px 0; }
 .issue p { margin: 6px 0 0; }
+
+.login-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.login-banner span { flex: 1; min-width: 200px; }

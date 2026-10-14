@@ -4,8 +4,9 @@ export type Screen = "loading" | "setup" | "login" | "app";
 
 export function screenFor(s: AuthStatus | null): Screen {
   if (!s) return "loading";
-  if (s.needs_setup) return "setup";
-  if (s.enabled && !s.authenticated) return "login";
+  // Login is optional and off by default: never block the dashboard on account creation.
+  // (Setup is offered from the Security page; this screen is only for the odd "login on, no account" state.)
+  if (s.enabled && !s.authenticated) return s.needs_setup ? "setup" : "login";
   return "app";
 }
 

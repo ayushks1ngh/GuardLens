@@ -43,7 +43,8 @@ describe("pure logic", () => {
   it("decides the screen from auth status", () => {
     const s = { enabled: false, needs_setup: false, authenticated: false, username: null };
     expect(screenFor(null)).toBe("loading");
-    expect(screenFor({ ...s, needs_setup: true })).toBe("setup");
+    expect(screenFor({ ...s, needs_setup: true })).toBe("app");  // login is optional: never block on account creation
+    expect(screenFor({ ...s, needs_setup: true, enabled: true })).toBe("setup");
     expect(screenFor({ ...s, enabled: true })).toBe("login");
     expect(screenFor({ ...s, enabled: true, authenticated: true })).toBe("app");
     expect(screenFor(s)).toBe("app");
@@ -94,6 +95,27 @@ describe("SecurityPage", () => {
     expect(screen.getByText(/You won’t see this again/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Turn login off" }));
     expect(screen.getByText(/Without login/)).toBeTruthy();
+  });
+});
+
+describe("first open with login off and no account", () => {
+  const fresh = { enabled: false, needs_setup: true, authenticated: false, username: null };
+
+  it("opens the dashboard straight away with a banner, not a setup wall", async () => {
+    authStatus = fresh;
+    render(<App />);
+    await screen.findByText(/Login is off: anyone on your network/);
+    expect(screen.queryByRole("heading", { name: "Create the administrator account" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Set up login" }));
+    await screen.findByRole("heading", { name: "Create the administrator account" });  // offered on the Security page
+  });
+
+  it("Security page does not ask for tokens while signed out (that 401 used to bounce to login)", async () => {
+    authStatus = fresh;
+    render(<SecurityPage meta={null} />);
+    await screen.findByRole("heading", { name: "Create the administrator account" });
+    expect(calls.some((c) => c.url === "/api/auth/tokens")).toBe(false);
+    expect(screen.queryByText("API tokens")).toBeNull();
   });
 });
 

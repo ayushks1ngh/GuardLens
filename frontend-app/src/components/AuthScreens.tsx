@@ -3,6 +3,11 @@ import { api, ApiError } from "../api";
 import { credentialProblem, loginErrorText } from "../lib/auth";
 
 export function AuthScreen({ mode, onDone }: { mode: "setup" | "login"; onDone: () => void }) {
+  return <div className="auth-screen"><AuthForm mode={mode} onDone={onDone} /></div>;
+}
+
+/** The sign-in / create-account card, usable full-screen or inline (Security page). */
+export function AuthForm({ mode, onDone }: { mode: "setup" | "login"; onDone: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +33,6 @@ export function AuthScreen({ mode, onDone }: { mode: "setup" | "login"; onDone: 
   };
 
   return (
-    <div className="auth-screen">
       <div className="card auth-card">
         <h1 style={{ marginTop: 0 }}>{setup ? "Create the administrator account" : "Sign in to GuardLens"}</h1>
         {setup && (
@@ -47,6 +51,5 @@ export function AuthScreen({ mode, onDone }: { mode: "setup" | "login"; onDone: 
           <button type="submit" className="primary" disabled={busy}>{setup ? "Create account" : "Sign in"}</button>
         </form>
       </div>
-    </div>
   );
 }

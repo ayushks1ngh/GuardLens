@@ -218,6 +218,11 @@ def create_app() -> FastAPI:
         cfg = state.get("config")
         return await __import__("asyncio").to_thread(collect_issues, Path(cfg.data_dir if cfg else "data"))
 
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        from fastapi.responses import Response
+        return Response(status_code=204)
+
     @app.get("/healthz")
     async def healthz():
         return {"status": "ok"}

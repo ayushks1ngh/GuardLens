@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError } from "../api";
 import { bearerExample, tokenUsedText, type ApiToken, type AuthStatus } from "../lib/auth";
+import { AuthForm } from "../components/AuthScreens";
 import type { Meta } from "../types";
 
 export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
@@ -17,10 +18,14 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
   const [error, setError] = useState<string | null>(null);
 
   const loadTokens = useCallback(() => api<ApiToken[]>("/api/auth/tokens").then(setTokens).catch(() => undefined), []);
-  useEffect(() => {
-    api<AuthStatus>("/api/auth/status").then(setStatus).catch(() => undefined);
-    loadTokens();
+  const loadStatus = useCallback(() => {
+    api<AuthStatus>("/api/auth/status").then((st) => {
+      setStatus(st);
+      // Only signed-in users can list tokens; asking while signed out would look like an expired session.
+      if (st.authenticated) loadTokens();
+    }).catch(() => undefined);
   }, [loadTokens]);
+  useEffect(() => { loadStatus(); }, [loadStatus]);
 
   const fail = (e: unknown, fallback: string) => setError(e instanceof ApiError ? e.message : fallback);
 
@@ -81,7 +86,7 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
             ? `Anyone opening GuardLens must sign in first${status.username ? ` (signed in as ${status.username})` : ""}.`
             : "Anyone who can reach this computer on your network can see the cameras."}
         </p>
-        {status && !status.enabled && <button type="button" className="primary" onClick={() => setLogin(true)}>Turn login on</button>}
+        {status && !status.enabled && !status.needs_setup && <button type="button" className="primary" onClick={() => setLogin(true)}>Turn login on</button>}
         {status?.enabled && !confirmOff && <button type="button" onClick={() => setConfirmOff(true)}>Turn login off</button>}
         {status?.enabled && confirmOff && (
           <div className="warn-box" role="alertdialog" aria-label="Confirm turning login off">
@@ -94,6 +99,20 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
         )}
       </div>
 
+      {status?.needs_setup && (
+        <>
+          <p className="hint">Create the administrator account to protect your cameras. Login turns on as soon as you do, and then every device must sign in.</p>
+          <AuthForm mode="setup" onDone={loadStatus} />
+        </>
+      )}
+      {status && !status.needs_setup && !status.authenticated && (
+        <>
+          <p className="hint">Sign in to change your password or manage API tokens.</p>
+          <AuthForm mode="login" onDone={loadStatus} />
+        </>
+      )}
+      {status?.authenticated && (
+        <>
       <form className="card stack" onSubmit={changePassword}>
         <h3 style={{ marginTop: 0 }}>Change password</h3>
         <label htmlFor="sec-current">Current password</label>
@@ -144,6 +163,8 @@ export function SecurityPage({ meta: _meta }: { meta: Meta | null }) {
           <button type="submit" className="primary" disabled={!tokenName.trim()}>Create token</button>
         </form>
       </div>
+        </>
+      )}
     </section>
   );
 }
