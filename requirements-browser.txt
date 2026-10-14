@@ -1,0 +1,3 @@
+# Only for scripts/browser_smoke.py (real-browser checks); the app itself does not need it.
+# One-time browser download: playwright install chromium
+playwright==1.64.0

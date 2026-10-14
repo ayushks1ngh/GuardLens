@@ -11,6 +11,12 @@ import cv2
 from guardlens.capture.sources import CameraSource, register_source
 
 
+def is_wsl() -> bool:
+    """True when running inside Windows Subsystem for Linux (no direct access to USB cameras)."""
+    version = Path("/proc/version")
+    return version.exists() and "microsoft" in version.read_text(errors="ignore").lower()
+
+
 @register_source
 class OpenCvSource(CameraSource):
     key = "opencv"
@@ -128,8 +134,7 @@ class OpenCvSource(CameraSource):
         """Plain-language next step for the most common reasons a camera will not open."""
         if self._mode == "device" and sys.platform.startswith("linux"):
             if not Path(f"/dev/video{self._value}").exists():
-                wsl = "microsoft" in Path("/proc/version").read_text(errors="ignore").lower() if Path("/proc/version").exists() else False
-                if wsl:
+                if is_wsl():
                     return (f" — /dev/video{self._value} does not exist. WSL2 cannot see USB/laptop webcams; "
                             "use a phone or browser camera (Add a camera > Phone) or attach the webcam with usbipd")
                 return f" — /dev/video{self._value} does not exist; check that the camera is plugged in"

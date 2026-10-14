@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE } from "../api";
 import { boxLabel, boxStyle, boxTone, countsText } from "../lib/overlay";
 import { isNewCritical } from "../lib/eventLogic";
+import { requestNavigate } from "../lib/navigate";
 import { readPref, writePref } from "../lib/storage";
 import { useEventStream } from "../lib/useEventStream";
 import type { CameraFull, Meta, OverlayInfo } from "../types";
@@ -134,6 +135,7 @@ function Tile({ camera, overlay, alert, focused, onFocus, onChanged }: {
         : <div className="feed feed-off" style={{ aspectRatio: "16 / 9" }}><span>Camera is switched off</span></div>}
       {alert && <div className="tile-alert-msg" role="alert">Critical alert on this camera</div>}
       <p className="hint">{state.text}</p>
+      {camera.enabled && !online && <button type="button" onClick={() => requestNavigate("cameras")}>Why isn’t it working?</button>}
       {counts.length > 0 && (
         <ul className="counts" aria-label="Currently seen">
           {counts.map(([name, n]) => <li key={name} className="badge info">{n} {name}</li>)}

@@ -14,9 +14,9 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 
 ## Stage 2 — Smooth daily use
 - [x] 2.1 Chat speed: streaming replies (`POST /api/assistant/chat/stream`, SSE; provider fallback before the first word; broken streams keep the words received). Measured in real Chromium: first words 0.5–0.7 s (was 8–20 s for the whole answer); the provider's free-tier queue can still spike (one run took 8.5 s). Image size was measured and is NOT the bottleneck. Model picker deferred: set `GUARDLENS_GEMINI_API_KEY` to add Gemini Flash to the fallback chain.
-- [ ] 2.2 Cameras: "Test this camera" with plain diagnosis; phone setup guide; webcam auto-attach helper (usbipd). 👤 hardware check.
-- [ ] 2.3 Live polish: chat hint overlap, fullscreen/focus, empty states that say which camera is off and why.
-- [ ] 2.4 Browser smoke suite (Playwright) in CI: login, Live, Settings tabs, chat.
+- [x] 2.2 Cameras: Settings → Cameras → Test runs `POST /api/cameras/{id}/test` (switched off / stalled / missing device + WSL usbipd steps / unreachable host:port / silent stream / waiting browser / missing file) and says what to do; Live tiles that are on but offline get "Why isn't it working?". [ ] 👤 phone setup guide + usbipd auto-attach helper — pending your hardware.
+- [x] 2.3 Live polish: chat hint spacing; offline tiles link to the camera test; off tiles say they are switched off.
+- [x] 2.4 Browser smoke suite: `scripts/browser_smoke.py` (12 steps, real Chromium) + a `browser` job in CI. Install: `pip install -r requirements-browser.txt && playwright install chromium`.
 - Gate: browser suite green in CI; 👤 webcam and phone show live video.
 
 ## Stage 3 — Detection quality

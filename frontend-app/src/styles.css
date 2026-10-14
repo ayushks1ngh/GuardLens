@@ -172,3 +172,6 @@ button.danger { color: var(--crit); border-color: var(--crit); }
 .subtabs button[aria-selected="true"] { background: #1c2636; color: var(--accent); border-color: var(--line); }
 .caret { display: inline-block; margin-left: 1px; animation: blink 1s steps(2) infinite; color: var(--accent); }
 @keyframes blink { to { visibility: hidden; } }
+.diagnosis { margin-top: 8px; } .diagnosis.ok { border-color: #2f8f5b; } .diagnosis.bad { border-color: #b8860b; }
+.checks { list-style: none; padding: 0; margin: 8px 0; } .checks li { margin: 3px 0; }
+.chat-panel .hint { margin: 8px 0; }

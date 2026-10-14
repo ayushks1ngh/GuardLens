@@ -223,6 +223,27 @@ def camera_snapshot(camera_id: int):
     return Response(buf.tobytes(), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
+@router.post("/{camera_id}/test")
+def test_camera(camera_id: int):
+    """Explain, in plain words, whether this camera works and what to do if it does not."""
+    from guardlens.camera_diagnosis import diagnose
+    from guardlens.capture.sources.opencv_source import is_wsl
+    from guardlens.capture.webrtc import pairing_service
+
+    with Session(get_engine()) as session:
+        camera = session.get(Camera, camera_id)
+        if not camera:
+            raise HTTPException(404, "camera not found")
+        record = {"name": camera.name, "enabled": camera.enabled, "source_type": camera.source_type,
+                  "source_config": dict(camera.source_config or {})}
+    if record["source_type"] == "opencv" and not record["source_config"].get("mode"):  # an old row: infer from the source string
+        record["source_config"]["mode"] = "device" if str(camera.source).isdigit() else "network" if "://" in str(camera.source) else "file"
+        key = {"device": "device_index", "network": "url", "file": "path"}[record["source_config"]["mode"]]
+        record["source_config"].setdefault(key, int(camera.source) if key == "device_index" else camera.source)
+    live = {p["stream_id"] for p in pairing_service.list_public() if p.get("connected")}
+    return diagnose(record, _status_for(camera_id), wsl=is_wsl, publisher_connected=lambda sid: sid in live)
+
+
 @router.get("/{camera_id}")
 def get_camera(camera_id: int):
     with Session(get_engine()) as session:

@@ -54,6 +54,10 @@ docker compose up --build
 Runtime state lives under `data/`; the Compose model volume keeps downloaded weights
 across restarts. Ultralytics is AGPL-3.0—review ADR-002 before commercial/network use.
 
+Checks you can run: `python -m pytest -q` (backend), `cd frontend-app && npm test` (frontend),
+`python scripts/e2e_smoke.py [--ai]` (real server, real model), `python scripts/browser_smoke.py` (real browser;
+`pip install -r requirements-browser.txt && playwright install chromium` once), `python scripts/check_detectors.py`.
+
 ## Documentation
 
 Read these in order:

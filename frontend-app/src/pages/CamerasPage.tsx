@@ -7,6 +7,7 @@ import {
 } from "../lib/sources";
 import type { CameraFull, Meta, Values } from "../types";
 import { describeCamera } from "./HealthPage";
+import { CameraTest } from "../components/CameraTest";
 
 interface PairingResult {
   stream_id: string; publisher_url: string; qr_data_uri: string; expires_at?: string | number;
@@ -269,6 +270,7 @@ export function CamerasPage({ meta: _meta }: { meta: Meta | null }) {
   const [devices, setDevices] = useState<LocalDevice[]>([]);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
+  const [testing, setTesting] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [error, setError] = useState("");
 
@@ -305,6 +307,7 @@ export function CamerasPage({ meta: _meta }: { meta: Meta | null }) {
                   <strong>{camera.name}</strong>
                   <p className="hint">{sourceSummary(camera, types)} · {state.text}</p>
                 </div>
+                <button type="button" onClick={() => setTesting(testing === camera.id ? null : camera.id)} aria-expanded={testing === camera.id}>Test</button>
                 <button type="button" onClick={() => setEditing(editing === camera.id ? null : camera.id)} aria-expanded={editing === camera.id}>Edit</button>
                 {confirmDelete !== camera.id && <button type="button" className="danger" onClick={() => setConfirmDelete(camera.id)}>Delete</button>}
               </div>
@@ -315,6 +318,7 @@ export function CamerasPage({ meta: _meta }: { meta: Meta | null }) {
                   <button type="button" onClick={() => setConfirmDelete(null)}>Keep it</button>
                 </div>
               )}
+              {testing === camera.id && <CameraTest cameraId={camera.id} cameraName={camera.name} />}
               {editing === camera.id && <EditCamera camera={camera} types={types} devices={devices} onDone={() => { setEditing(null); void load(); }} />}
             </li>
           );
