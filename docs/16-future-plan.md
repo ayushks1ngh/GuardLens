@@ -31,7 +31,7 @@ scope choices, or hardware. Defaults chosen: Stage 1 first, retention 90 days, b
 ## Stage 4 — Trust and security
 - [x] 4.1 API tokens are read-only or full access and can expire (defaults in the UI: read-only, 90 days; existing tokens stay full/never-expire); read-only tokens are refused on any write and on account/token/audit endpoints; audit log (sign-ins, failures, password/token/login changes; no secrets; 180 days, 10k rows max) shown under Settings → Security; per-account throttle (10 failures / 5 min from any address) on top of the per-address one. Note: the per-account throttle means someone who knows the admin name can make the admin wait; the audit log shows it.
 - [ ] 4.2 Remote access (Tailscale / Cloudflare tunnel) verified end to end.
-- [ ] 4.3 Dependency refresh behind the full suite.
+- [x] 4.3 Dependency audit + refresh: pip-audit found 6 advisories in python-multipart 0.0.20 (face-photo upload parsing), 3 relevant ones in Starlette 0.41.3 (Host header, multipart DoS, Range DoS), 1 in pytest. Upgraded to fastapi 0.143.1 / starlette 1.0.1 / python-multipart 0.0.32 / pytest 9.0.3; all 227 tests, e2e (48/48 with AI) and the browser suite (15/15) pass; pip-audit now reports none for requirements.txt. Weekly `audit.yml` workflow keeps checking. (Not fixed: `setuptools` in the dev venv — build tool only, not shipped; torch CPU wheels cannot be audited by PyPI index.)
 - Gate: /security-review on the diff with no open findings.
 
 ## Stage 5 — New capabilities (scope decided after Stage 4)

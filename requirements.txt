@@ -1,9 +1,11 @@
 # --- Web framework ---
-fastapi==0.115.6
+fastapi==0.143.1
+# Starlette pinned directly: 1.0.1 fixes advisories for Host-header handling, multipart uploads and Range requests.
+starlette==1.0.1
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pyyaml==6.0.2
-python-multipart==0.0.20
+python-multipart==0.0.32
 
 # --- Database ---
 sqlmodel==0.0.22
@@ -41,5 +43,5 @@ huggingface_hub==2.2.0
 requests==2.34.2
 
 # --- Testing ---
-pytest==8.3.4
+pytest==9.0.3
 httpx==0.28.1

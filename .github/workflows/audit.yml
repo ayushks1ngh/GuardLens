@@ -1,0 +1,28 @@
+name: Dependency audit
+# Weekly (and on demand) check of the pinned Python and npm dependencies for known security advisories.
+# It runs separately from CI so a newly published advisory never blocks an unrelated change, but it fails visibly.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      # torch / torchvision CPU wheels are not on PyPI's index under these versions; pip-audit reports them as skipped.
+      - run: pip-audit -r requirements.txt --no-deps --disable-pip
+
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd frontend-app && npm audit --omit=dev
